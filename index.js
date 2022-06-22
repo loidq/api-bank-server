@@ -14,11 +14,19 @@ mongoClient
 	.catch((error) => console.error(`❌ Connect database is failed with error which is ${error}`))
 
 const app = express()
-
+const authRoute = require('./routes/auth')
+const userRoute = require('./routes/user')
+const securityRoute = require('./routes/security')
+const rechargeRoute = require('./routes/recharge')
 app.use(cors())
-app.use(logger('dev'))
-app.use(bodyParser.json())
 
+app.use(logger('dev'))
+
+app.use(bodyParser.json())
+app.use('/auth', authRoute)
+app.use('/user', userRoute)
+app.use('/security', securityRoute)
+app.use('/recharge', rechargeRoute)
 app.get('/', (req, res, next) => {
 	return res.status(201).json({
 		success: true,
