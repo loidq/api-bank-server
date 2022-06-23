@@ -35,17 +35,19 @@ const upgrade = async (req, res, next) => {
 const extend = async (req, res, next) => {
 	const { bankID } = req.value.params
 	const { amount, _id } = req.user
-	const { type, period } = req.value.body
-	let { amount: price } = await Price.findOne({ type })
+	const { period } = req.value.body
+
 	let check = await Bank.findOne({
 		_id: bankID,
 		owner: _id,
 	})
+
 	if (!check)
 		newError({
 			status: 400,
-			message: 'Gia hạn không tồn tại, vui lòng tải lại trang.',
+			message: 'Tài khoản gia hạn không tồn tại, vui lòng tải lại trang.',
 		})
+	let { amount: price } = await Price.findOne({ type: check.bank })
 	if (amount < price * period)
 		newError({
 			status: 400,
@@ -56,9 +58,11 @@ const extend = async (req, res, next) => {
 	})
 
 	let expired = new Date().setMonth(new Date().getMonth() + period)
-	await Deck.findByIdAndUpdate(check.decks, {
-		expired,
-	})
+	let deck = await Deck.findById(check.decks)
+	if (deck.expired > new Date()) expired = deck.expired.setMonth(deck.expired.getMonth() + period)
+
+	await Deck.findByIdAndUpdate(check.decks, { expired })
+
 	return res.status(200).json({
 		success: true,
 		message: 'Bạn đã gia hạn thành công',
@@ -66,32 +70,94 @@ const extend = async (req, res, next) => {
 	})
 }
 
-const checkExpired = async (req, res, next) => {
-	const { type } = req.value.params
+const listDeck = async (req, res, next) => {
 	const { _id } = req.user
-	let check = await Deck.findOne({
-		expired : {
-			$gte : new Date()
+
+	let decks = await Deck.find(
+		{
+			owner: _id,
 		},
-		banks : null,
-		owner : _id,
-		type
+		{ _id: 0, expired: 1, type: 1 }
+	)
+
+	return res.status(200).json({
+		success: true,
+		message: 'Thành công.',
+		data: { list: decks, total: decks.length },
 	})
-	if(!check)
-			newError({
-				status: 400,
-				message: 'Bạn cần nâng cấp để sử dụng.',
-			})
+}
+
+const checkDate = async (req, res, next) => {
+	const { token } = req.value.body
+	let bank = await Bank.findOne({
+		token,
+	})
+	if (!bank)
+		newError({
+			status: 400,
+			message: 'Token không tồn tại trong hệ thống.',
+		})
+	else if (bank.status == 0)
+		newError({
+			status: 400,
+			message: 'Tài khoản đang tạm thời ngưng sử dụng.',
+		})
+	else if (bank.status == 2)
+		newError({
+			status: 400,
+			message: 'Tài khoản đang bị khoá vui lòng inbox admin giải quyết.',
+		})
+	else if (bank.status == 3)
+		newError({
+			status: 400,
+			message: 'Vui lòng đang nhập lại tài khoản.',
+		})
+	else if (bank.status == 99)
+		newError({
+			status: 400,
+			message: 'Tài khoản tạm thời chưa sử dụng được.',
+		})
+
+	let check = await Deck.findOne({
+		expired: {
+			$gt: new Date(),
+		},
+		banks: bank._id,
+		owner: bank.owner,
+	})
+
+	if (!check)
+		newError({
+			status: 400,
+			message: 'Tài khoản đã hết hạn sử dụng, vui lòng gia hạn để tiếp tục sử dụng.',
+		})
+	req.bank = bank
+	next()
+}
+
+const checkExpired = async (req, res, next) => {
+	const { bank: type } = req.value.params
+
+	const { _id } = req.user
+
+	let check = await Deck.findOne({
+		expired: {
+			$gt: new Date(),
+		},
+		banks: null,
+		owner: _id,
+		type,
+	})
+
+	if (!check)
+		newError({
+			status: 400,
+			message: 'Bạn cần nâng cấp để sử dụng.',
+		})
 	req.deck = check
 	next()
 
-
-
-
-
-
-
-
+	/*
 	if (type == 'momo' || type == 'zalopay') console.log('TODO')
 	else {
 		let { username } = req.value.body
@@ -107,4 +173,12 @@ const checkExpired = async (req, res, next) => {
 		decks.push(newBank._id)
 		await owner.save()
 	}
+	*/
+}
+module.exports = {
+	upgrade,
+	extend,
+	checkExpired,
+	checkDate,
+	listDeck,
 }
