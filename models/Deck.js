@@ -2,7 +2,11 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 //expired
 const DeckSchema = new Schema({
-	type: { type: String, enum: ['momo', 'vcb', 'acb', 'mbb', 'zalopay', 'tpb', 'vtb'], lowercase: true },
+	type: {
+		type: String,
+		enum: ['momo', 'vcb', 'acb', 'mbb', 'zalopay', 'tpb', 'vtb'],
+		lowercase: true,
+	},
 	expired: {
 		type: Date,
 	},
