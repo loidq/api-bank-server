@@ -74,6 +74,11 @@ const validateParam = (schema, name) => {
 }
 
 const schemas = {
+	idSchema: Joi.object().keys({
+		param: Joi.string()
+			.regex(/^[0-9a-zA-Z]{24}$/)
+			.required(),
+	}),
 	loginSchema: Joi.object().keys({
 		email: Joi.string()
 			.email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } })
@@ -134,6 +139,28 @@ const schemas = {
 		otp: Joi.string()
 			.regex(/^[0-9]{6}$/)
 			.required(),
+	}),
+	typeBankSchema: Joi.object().keys({
+		param: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb').required(),
+	}),
+	typeWalletSchema: Joi.object().keys({
+		param: Joi.string().valid('momo', 'zalopay').required(),
+	}),
+
+	newBankSchema: Joi.object().keys({
+		username: Joi.string()
+			.regex(/^[0-9a-zA-Z_-]+$/)
+			.required(),
+	}),
+	bankOptionalSchema: Joi.object().keys({
+		status: Joi.number().min(0).max(1).required(),
+	}),
+	upgradeSchema: Joi.object().keys({
+		period: Joi.number().min(1).max(6).required(),
+		type: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb', 'momo', 'zalopay').required(),
+	}),
+	extendSchema: Joi.object().keys({
+		period: Joi.number().min(1).max(6).required(),
 	}),
 }
 
