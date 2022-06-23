@@ -18,6 +18,8 @@ const authRoute = require('./routes/auth')
 const userRoute = require('./routes/user')
 const securityRoute = require('./routes/security')
 const rechargeRoute = require('./routes/recharge')
+const bankRoute = require('./routes/bank')
+const deckRoute = require('./routes/deck')
 app.use(cors())
 
 app.use(logger('dev'))
@@ -27,6 +29,8 @@ app.use('/auth', authRoute)
 app.use('/user', userRoute)
 app.use('/security', securityRoute)
 app.use('/recharge', rechargeRoute)
+app.use('/bank', bankRoute)
+app.use('/deck', deckRoute)
 app.get('/', (req, res, next) => {
 	return res.status(201).json({
 		success: true,
