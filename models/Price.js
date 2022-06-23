@@ -4,7 +4,7 @@ const Schema = mongoose.Schema
 const PriceSchema = new Schema({
 	type: {
 		type: String,
-		enum: ['momo', 'vcb', 'acb', 'mbb', 'zalopay', 'tpb', 'vtb'],
+		enum: ['momo', 'vcb', 'acb', 'mbb', 'zalopay', 'tpb', 'vtb', 'tcb'],
 		lowercase: true,
 	},
 	amount: {

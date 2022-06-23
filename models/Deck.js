@@ -13,12 +13,10 @@ const DeckSchema = new Schema({
 	banks: {
 		type: Schema.Types.ObjectId,
 		ref: 'Bank',
-		unique: true,
 	},
 	owner: {
 		type: Schema.Types.ObjectId,
 		ref: 'User',
-		unique: true,
 	},
 })
 
