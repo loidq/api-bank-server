@@ -48,6 +48,11 @@ const BankSchema = new Schema(
 		token: {
 			type: String,
 		},
+		balance: {
+			type: Number,
+			min: 0,
+			default: 0,
+		},
 		status: {
 			type: Number,
 			enum: [0, 1, 2, 3, 4, 99],
