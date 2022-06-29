@@ -58,6 +58,9 @@ const BankSchema = new Schema(
 			enum: [0, 1, 2, 3, 4, 99],
 			default: 1,
 		},
+		errorCode: {
+			type: Number,
+		},
 		decks: {
 			type: Schema.Types.ObjectId,
 			ref: 'Deck',
