@@ -77,7 +77,7 @@ const listDeck = async (req, res, next) => {
 		{
 			owner: _id,
 		},
-		{ _id: 0, expired: 1, type: 1 }
+		{ _id: 0, expired: 1, type: 1, banks: 1 }
 	)
 
 	return res.status(200).json({
