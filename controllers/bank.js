@@ -65,7 +65,25 @@ const listBank = async (req, res, next) => {
 	const { _id: userID } = req.user
 	const { bank } = req.value.params
 
-	const accounts = await Bank.find({ owner: userID, bank }, { username: 1, phone: 1, status: 1, createdAt: 1 })
+	const accounts = await Bank.find(
+		{
+			owner: userID,
+			bank,
+		},
+		{
+			username: 1,
+			phone: 1,
+			balance: 1,
+			status: 1,
+			createdAt: 1,
+		}
+	).populate({
+		path: 'decks',
+		select: {
+			_id: 0,
+			expired: 1,
+		},
+	})
 	//const accounts = await await Bank.find({ owner: userID, bank },	{ username: 1, status: 1, createdAt: 1, bank: 1 }).limit(pageSize).skip(pageSize * (pageIndex - 1))
 
 	return res.status(200).json({ success: true, data: { list: accounts, total: accounts.length } })
