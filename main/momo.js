@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const Error = require('../models/Error')
+const { newError } = require('../helpers/routerHelpers')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -343,7 +344,10 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 		Userhash: md5(phone),
 	})
 	if (!response.result) {
-		if (response.errorCode == -83) await UN_REG_DEVICE_MSG(req, res, next)
+		if (response.errorCode == -83)
+			await Bank.findByIdAndUpdate(_id, {
+				status: 3,
+			})
 		newError({
 			message: response.errorDesc,
 			status: 400,
@@ -354,6 +358,8 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 		await Bank.findByIdAndUpdate(_id, {
 			jwt_token: response.extra.AUTH_TOKEN,
 			refresh_token: response.extra.REFRESH_TOKEN,
+			lastLogin: new Date(),
+			balance: response.extra.BALANCE,
 		})
 	}
 	next()
@@ -731,10 +737,10 @@ const M2MU_CONFIRM = async (req, res, next) => {
 
 const SEND_MONEY = async (currentAccount, dataTranfer) => {}
 
-const GENERATE_TOKEN_AUTH_MSG = async (currentAccount) => {
-	let { phone, refresh_token, imei, jwt_token, _id } = currentAccount
+const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
+	let { phone, refresh_token, imei, jwt_token, _id } = req.bank
 	let time = new Date().getTime(),
-		checkSum = await generateCheckSum(currentAccount, 'GENERATE_TOKEN_AUTH_MSG', time)
+		checkSum = generateCheckSum(req.bank, 'GENERATE_TOKEN_AUTH_MSG', time)
 	let data = JSON.stringify({
 		user: phone,
 		msgType: 'GENERATE_TOKEN_AUTH_MSG',
@@ -765,30 +771,27 @@ const GENERATE_TOKEN_AUTH_MSG = async (currentAccount) => {
 			checkSum,
 		},
 	})
-	var { data: response } = await postAxios('https://api.momo.vn/backend/auth-app/public/GENERATE_TOKEN_AUTH_MSG', data, {
+	let response = await postAxios('https://api.momo.vn/backend/auth-app/public/GENERATE_TOKEN_AUTH_MSG', data, {
 		userid: phone,
 		Authorization: `Bearer ${jwt_token}`,
 	})
 
 	if (!response.result) {
-		let checkLogin = await login(currentAccount)
-		if (!checkLogin)
-			newError({
-				message: response.errorDesc || `Lấy Authorization thất bại. [${response.errorCode}]`,
-				status: 400,
-			})
+		await USER_LOGIN_MSG(req, res, next)
+		newError({
+			message: response.errorDesc || `Lấy Authorization thất bại. [${response.errorCode}]`,
+			status: 400,
+		})
 	} else
 		await Bank.findByIdAndUpdate(_id, {
 			jwt_token: response.extra.AUTH_TOKEN,
+			lastLogin: new Date(),
 		})
-	return await Bank.findById(_id)
 }
 
 const transactionHistory = async (currentAccount) => {
-	let key = randomkey(32),
-		requestkey = encryptRSA(key),
-		time = new Date().getTime()
-	let data = await encryptAES(
+	let time = new Date().getTime()
+	let data = encryptAES(
 		JSON.stringify({
 			requestId: time,
 			startDate: begin,

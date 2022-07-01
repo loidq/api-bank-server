@@ -61,6 +61,9 @@ const BankSchema = new Schema(
 		errorCode: {
 			type: Number,
 		},
+		lastLogin: {
+			type: Date,
+		},
 		decks: {
 			type: Schema.Types.ObjectId,
 			ref: 'Deck',
