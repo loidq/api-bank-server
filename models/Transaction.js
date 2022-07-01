@@ -6,7 +6,7 @@ const TransactionSchema = new Schema(
 		io: {
 			type: Number,
 		},
-		transId: {
+		tranId: {
 			type: Number,
 		},
 		partnerId: {
@@ -27,9 +27,13 @@ const TransactionSchema = new Schema(
 		time: {
 			type: Date,
 		},
+		banks: {
+			type: Schema.Types.ObjectId,
+			ref: 'Bank',
+		},
 		owner: {
 			type: Schema.Types.ObjectId,
-			ref: 'Wallet',
+			ref: 'User',
 		},
 	},
 	{ timestamps: true }
