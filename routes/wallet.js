@@ -43,5 +43,11 @@ router
 	)
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeWalletSchema, 'bank'), validateBody(schemas.tokenSchema), DeckController.checkDate, MomoController.GET_BALANCE)
+	.get(
+		validateParam(schemas.typeWalletSchema, 'bank'),
+		validateBody(schemas.tokenSchema),
+		DeckController.checkDate,
+		MomoController.SOF_LIST_MANAGER_MSG,
+		MomoController.GET_BALANCE
+	)
 module.exports = router
