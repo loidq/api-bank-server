@@ -2,6 +2,8 @@ const crypto = require('crypto')
 const axios = require('axios')
 const Error = require('../models/Error')
 const { newError } = require('../helpers/routerHelpers')
+const dayjs = require('dayjs')
+const Transaction = require('../models/Transaction')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -42,6 +44,9 @@ const getProxy = async () => {
 	})
 	return proxy
 }
+
+const begin = (date) => dayjs(date.setDate(1)).hour(0).minute(0).second(0).millisecond(0)
+const end = (date) => dayjs(date)
 
 const get_ip_address = async () => {
 	let { data: response, status } = await axios.get('https://api.ipify.org?format=json')
@@ -91,6 +96,35 @@ const postAxios = async (url, data, headers, proxy = null) => {
 		await error.save()
 	}
 	return isJson(response.data)
+}
+
+const isJson2 = async (str) => {
+	if (!str) console.log('Loi du lieu tu Server MoMo')
+	try {
+		JSON.parse(str)
+		return str
+	} catch (e) {
+		let response = decryptAES(str, '123456789012345678901234567890aa')
+		return response
+	}
+}
+
+const postAxios2 = async (url, data, headers, proxy = null) => {
+	let response = await axios.post(url, data, {
+		headers,
+		validateStatus: () => true,
+		httpsAgent: proxy,
+	})
+	if (response.status != 200) {
+		let error = new Error({
+			url,
+			data: response.data,
+			status: response.status,
+		})
+		await error.save()
+	}
+
+	return isJson2(response.data)
 }
 
 const CHECK_USER_BE_MSG = async (req, res, next) => {
@@ -711,7 +745,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	let transaction = new Transaction({
 		io: -1,
 		time: response.momoMsg.replyMsgs[0].finishTime,
-		tranId: response.momoMsg.replyMsgs[0].tranId,
+		transId: response.momoMsg.replyMsgs[0].transId,
 		partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
 		partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
 		amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
@@ -726,7 +760,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	req.info.transaction = {
 		io: -1,
 		time: response.momoMsg.replyMsgs[0].finishTime,
-		tranId: response.momoMsg.replyMsgs[0].tranId,
+		transId: response.momoMsg.replyMsgs[0].transId,
 		partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
 		partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
 		amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
@@ -789,14 +823,20 @@ const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
 		})
 }
 
-const transactionHistory = async (currentAccount) => {
+const transactionHistory = async (bank) => {
 	let time = new Date().getTime()
+	let startDate = dayjs(new Date().setDate(1)).hour(0).minute(0).second(0).millisecond(0)
+	let endDate = dayjs(new Date())
+	let limit = bank.newLogin ? 150 : 20
+
+	let fromDate = bank.newLogin ? startDate : dayjs(new Date().setHours(new Date().getHours() - 1))
+	let toDate = endDate
 	let data = encryptAES(
 		JSON.stringify({
 			requestId: time,
-			startDate: begin,
-			endDate: end,
-			offset,
+			startDate: dayjs(startDate).format('DD/MM/YYYY'),
+			endDate: dayjs(endDate).format('DD/MM/YYYY'),
+			offset: 0,
 			limit,
 			lang: 'vi',
 			channel: 'APP',
@@ -806,18 +846,39 @@ const transactionHistory = async (currentAccount) => {
 			buildNumber: 0,
 			appId: 'vn.momo.transactionhistory',
 		}),
-		key
+		'123456789012345678901234567890aa'
 	)
-	var { data: response } = await postAxios('https://api.momo.vn/sync/transhis/browse', data, {
+	let response = await postAxios('https://api.momo.vn/sync/transhis/browse', data, {
 		'Content-Type': 'application/json',
-		requestkey: requestkey,
-		Authorization: `Bearer ${jwt_token}`,
+		requestkey: config.requestkey,
+		Authorization: `Bearer ${bank.jwt_token}`,
 	})
-	response = await decryptAES(response, key)
-
-	if (!isJson(response)) newError({ message: response || 'Lỗi dữ liệu từ Server Momo', status: 500 })
-
-	response = JSON.parse(response)
-	if (response.resultCode != 0) newError({ message: response.message || 'Không thể lấy lịch sử giao dịch, vui lòng thử lại sau!!!', status: 400 })
-	return response
+	if (response.resultCode != 0) return
+	let transactions = response.momoMsg
+	for (var i in transactions) {
+		if (
+			transactions[i].lastUpdate <= toDate &&
+			transactions[i].lastUpdate >= fromDate &&
+			(transactions[i].serviceId == 'transfer_via_chat' || transactions[i].serviceId == 'transfer_p2p')
+		) {
+			let check = await Transaction.findOne({
+				banks: bank._id,
+				transId: transactions[i].transId,
+			})
+			if (!check) {
+				let transaction = new Transaction({
+					owner: bank.owner,
+					banks: bank._id,
+					io: transactions[i].io,
+					transId: transactions[i].transId,
+					partnerId: transactions[i].io == -1 ? transactions[i].targetId : transactions[i].sourceId,
+					partnerName: transactions[i].io == -1 ? transactions[i].targetName : transactions[i].sourceName,
+					amount: transactions[i].totalOriginalAmount,
+					postBalance: transactions[i].postBalance,
+					time: transactions[i].lastUpdate,
+				})
+				await transaction.save()
+			}
+		}
+	}
 }
