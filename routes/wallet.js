@@ -3,27 +3,45 @@ const router = require('express-promise-router')()
 const passport = require('passport')
 const passportConfig = require('../middlewares/passport')
 
-const BankController = require('../controllers/bank')
+const MomoController = require('../main/momo')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 
 router
-	.route('/:bank')
-	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
+	.route('/tranfer/:bank')
 	.post(
-		passport.authenticate('jwt', { session: false }),
-		validateParam(schemas.typeBankSchema, 'bank'),
-		validateBody(schemas.newBankSchema),
-		DeckController.checkExpired,
-		BankController.newBank
+		validateParam(schemas.typeWalletSchema, 'bank'),
+		validateBody(schemas.tranferData),
+		DeckController.checkDate,
+		MomoController.SOF_LIST_MANAGER_MSG,
+		MomoController.CHECK_MONEY,
+		MomoController.CHECK_USER_PRIVATE,
+		MomoController.M2MU_INIT,
+		MomoController.M2MU_CONFIRM
 	)
 router
-	.route('/:bankID')
-	.patch(
+	.route('/:bank/getOTP')
+	.post(
 		passport.authenticate('jwt', { session: false }),
-		validateParam(schemas.idSchema, 'bankID'),
-		validateBody(schemas.bankOptionalSchema),
-		BankController.updateBank
+		validateParam(schemas.typeWalletSchema, 'bank'),
+		validateBody(schemas.getOTPWallet),
+		DeckController.checkExpired,
+		MomoController.createImei,
+		MomoController.CHECK_USER_BE_MSG,
+		MomoController.SEND_OTP_MSG,
+		MomoController.SEND_OTP_MOMO
 	)
-	.delete(passport.authenticate('jwt', { session: false }), validateParam(schemas.idSchema, 'bankID'), BankController.deleteBank)
+router
+	.route('/:bank/confirmOTP')
+	.post(
+		passport.authenticate('jwt', { session: false }),
+		validateParam(schemas.typeWalletSchema, 'bank'),
+		validateBody(schemas.confirmOTPWallet),
+		MomoController.REG_DEVICE_MSG,
+		MomoController.USER_LOGIN_MSG,
+		MomoController.CONFIRM_OTP_MOMO
+	)
+router
+	.route('/:bank/getBalance')
+	.get(validateParam(schemas.typeWalletSchema, 'bank'), validateBody(schemas.tokenSchema), DeckController.checkDate, MomoController.GET_BALANCE)
 module.exports = router

@@ -20,6 +20,7 @@ const securityRoute = require('./routes/security')
 const rechargeRoute = require('./routes/recharge')
 const bankRoute = require('./routes/bank')
 const deckRoute = require('./routes/deck')
+const walletRoute = require('./routes/wallet')
 app.use(cors())
 
 app.use(logger('dev'))
@@ -31,6 +32,7 @@ app.use('/security', securityRoute)
 app.use('/recharge', rechargeRoute)
 app.use('/bank', bankRoute)
 app.use('/deck', deckRoute)
+app.use('/wallet', walletRoute)
 app.get('/', (req, res, next) => {
 	return res.status(201).json({
 		success: true,

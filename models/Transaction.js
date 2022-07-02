@@ -6,6 +6,9 @@ const TransactionSchema = new Schema(
 		io: {
 			type: Number,
 		},
+		serviceId: {
+			type: String,
+		},
 		transId: {
 			type: Number,
 		},
@@ -28,8 +31,8 @@ const TransactionSchema = new Schema(
 			type: Date,
 		},
 		status: {
-			type: Number,
-			default: 0,
+			type: Boolean,
+			default: false,
 		},
 		banks: {
 			type: Schema.Types.ObjectId,

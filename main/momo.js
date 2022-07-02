@@ -1,9 +1,11 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const Error = require('../models/Error')
-const { newError } = require('../helpers/routerHelpers')
+const { newError, uuidv4 } = require('../helpers/routerHelpers')
 const dayjs = require('dayjs')
 const Transaction = require('../models/Transaction')
+const Bank = require('../models/Bank')
+const Deck = require('../models/Deck')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -127,6 +129,49 @@ const postAxios2 = async (url, data, headers, proxy = null) => {
 	return isJson2(response.data)
 }
 
+const createImei = async (req, res, next) => {
+	if (!req.bank) req.bank = {}
+	req.bank.imei = uuidv4()
+	let { bank } = req.value.params
+	let { phone } = req.value.body
+	if (await Bank.findOne({ bank, phone }))
+		newError({
+			status: 400,
+			message: 'Tài khoản này đã tồn tại trong hệ thống.',
+		})
+	console.log(bank, phone, imei)
+	next()
+}
+
+const SEND_OTP_MOMO = async (req, res, next) => {
+	const deck = req.deck
+	const { _id } = req.user
+	let { imei } = req.bank
+	let { bank } = req.value.params
+	let { phone } = req.value.body
+
+	const newBank = new Bank({ bank, phone, imei, owner: _id, token: uuidv4(), decks: deck._id, status: 99 })
+	await newBank.save()
+	// Add newly created bank to the actual banks
+
+	await Deck.findByIdAndUpdate(deck._id, {
+		banks: newBank._id,
+	})
+	return res.status(200).json({
+		success: true,
+		message: 'Lay OTP thanh cong.',
+		data: {
+			_id: newBank._id,
+		},
+	})
+}
+const CONFIRM_OTP_MOMO = async (req, res, next) => {
+	return res.status(200).json({
+		success: true,
+		message: 'Them tai khoan thanh cong.',
+		data: {},
+	})
+}
 const CHECK_USER_BE_MSG = async (req, res, next) => {
 	let { phone } = req.value.body
 	let { imei } = req.bank
@@ -234,8 +279,10 @@ const SEND_OTP_MSG = async (req, res, next) => {
 }
 
 const REG_DEVICE_MSG = async (req, res, next) => {
-	let { otp, password } = req.value.body
-	let { phone, imei, _id } = req.bank
+	if (!req.bank) req.bank = {}
+	let { otp, password, _id } = req.value.body
+	req.bank = await Bank.findById(_id)
+	let { phone, imei } = req.bank
 	let time = new Date().getTime(),
 		data = {
 			user: phone,
@@ -400,7 +447,8 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 }
 
 const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
-	let { jwt_token, phone, _id } = req.bank
+	let { jwt_token, phone, _id, lastLogin } = req.bank
+	if (new Date() - lastLogin > 5300000) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
 	let time = new Date().getTime(),
 		checkSum = generateCheckSum(req.bank, 'SOF_LIST_MANAGER_MSG', time)
 	let data = encryptAES(
@@ -434,11 +482,13 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 		requestkey: config.requestkey,
 		Authorization: `Bearer ${jwt_token}`,
 	})
-	if (!response.result)
+	if (!response.result) {
+		if (response.errorCode == -87) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
 		newError({
 			message: response.errorDesc,
 			status: 400,
 		})
+	}
 	await Bank.findByIdAndUpdate(_id, {
 		balance: response.momoMsg.sofInfo[0].balance,
 	})
@@ -684,8 +734,8 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	let { numberPhone: partnerId, amount, comment, password } = req.value.body
 	let { phone, jwt_token, _id, owner } = req.bank
 	let time = new Date().getTime(),
-		checkSum = await generateCheckSum(req.bank, 'M2MU_CONFIRM', time)
-	let data = await encryptAES(
+		checkSum = generateCheckSum(req.bank, 'M2MU_CONFIRM', time)
+	let data = encryptAES(
 		JSON.stringify({
 			user: phone,
 			msgType: 'M2MU_CONFIRM',
@@ -742,18 +792,23 @@ const M2MU_CONFIRM = async (req, res, next) => {
 		Authorization: `Bearer ${jwt_token}`,
 	})
 	if (!response.result) newError({ message: response.errorDesc, status: 400 })
-	let transaction = new Transaction({
-		io: -1,
-		time: response.momoMsg.replyMsgs[0].finishTime,
+	let check = await Transaction.findOne({
 		transId: response.momoMsg.replyMsgs[0].transId,
-		partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
-		partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
-		amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
-		postBalance: response.extra.BALANCE,
-		banks: _id,
-		owner,
 	})
-	await transaction.save()
+	if (!check) {
+		let transaction = new Transaction({
+			io: -1,
+			time: response.momoMsg.replyMsgs[0].finishTime,
+			transId: response.momoMsg.replyMsgs[0].transId,
+			partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
+			partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
+			amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
+			postBalance: response.extra.BALANCE,
+			banks: _id,
+			owner,
+		})
+		await transaction.save()
+	}
 	await Bank.findByIdAndUpdate(_id, {
 		balance: response.extra.BALANCE,
 	})
@@ -766,10 +821,22 @@ const M2MU_CONFIRM = async (req, res, next) => {
 		amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
 		postBalance: response.extra.BALANCE,
 	}
-	next()
+	return res.status(200).json({
+		success: true,
+		message: 'Thanh cong',
+		data: req.info.transaction,
+	})
 }
 
-const SEND_MONEY = async (currentAccount, dataTranfer) => {}
+const CHECK_MONEY = async (req, res, next) => {
+	let { balance } = req.bank
+	let { amount } = req.value.body
+	if (amount > balance)
+		newError({
+			status: 400,
+			message: 'Tai khoan cua quy khach khong du so du',
+		})
+}
 
 const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
 	let { phone, refresh_token, imei, jwt_token, _id } = req.bank
@@ -816,21 +883,23 @@ const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
 			message: response.errorDesc || `Lấy Authorization thất bại. [${response.errorCode}]`,
 			status: 400,
 		})
-	} else
+	} else {
+		req.jwt_token = response.extra.AUTH_TOKEN
 		await Bank.findByIdAndUpdate(_id, {
 			jwt_token: response.extra.AUTH_TOKEN,
 			lastLogin: new Date(),
 		})
+	}
+	next()
 }
 
-const transactionHistory = async (bank) => {
+const browse = async (bank) => {
 	let time = new Date().getTime()
 	let startDate = dayjs(new Date().setDate(1)).hour(0).minute(0).second(0).millisecond(0)
 	let endDate = dayjs(new Date())
-	let limit = bank.newLogin ? 150 : 20
-
-	let fromDate = bank.newLogin ? startDate : dayjs(new Date().setHours(new Date().getHours() - 1))
-	let toDate = endDate
+	let limit = bank.newLogin ? 200 : 20
+	let fromDate = bank.newLogin ? startDate.valueOf() : dayjs(new Date().setHours(new Date().getHours() - 1)).valueOf()
+	let toDate = endDate.valueOf()
 	let data = encryptAES(
 		JSON.stringify({
 			requestId: time,
@@ -848,7 +917,7 @@ const transactionHistory = async (bank) => {
 		}),
 		'123456789012345678901234567890aa'
 	)
-	let response = await postAxios('https://api.momo.vn/sync/transhis/browse', data, {
+	let response = await postAxios2('https://api.momo.vn/sync/transhis/browse', data, {
 		'Content-Type': 'application/json',
 		requestkey: config.requestkey,
 		Authorization: `Bearer ${bank.jwt_token}`,
@@ -857,9 +926,12 @@ const transactionHistory = async (bank) => {
 	let transactions = response.momoMsg
 	for (var i in transactions) {
 		if (
+			transactions[i].errorCode == 0 &&
 			transactions[i].lastUpdate <= toDate &&
 			transactions[i].lastUpdate >= fromDate &&
-			(transactions[i].serviceId == 'transfer_via_chat' || transactions[i].serviceId == 'transfer_p2p')
+			(transactions[i].serviceId == 'transfer_p2p_globalsearch' ||
+				transactions[i].serviceId == 'transfer_via_chat' ||
+				transactions[i].serviceId == 'transfer_p2p')
 		) {
 			let check = await Transaction.findOne({
 				banks: bank._id,
@@ -870,6 +942,7 @@ const transactionHistory = async (bank) => {
 					owner: bank.owner,
 					banks: bank._id,
 					io: transactions[i].io,
+					serviceId: transactions[i].serviceId,
 					transId: transactions[i].transId,
 					partnerId: transactions[i].io == -1 ? transactions[i].targetId : transactions[i].sourceId,
 					partnerName: transactions[i].io == -1 ? transactions[i].targetName : transactions[i].sourceName,
@@ -881,4 +954,64 @@ const transactionHistory = async (bank) => {
 			}
 		}
 	}
+	await Bank.findByIdAndUpdate(bank._id, {
+		newLogin: false,
+	})
+}
+
+const details = async (bank) => {
+	let { jwt_token } = await Bank.findById(bank.owner)
+	let time = new Date().getTime()
+	let data = encryptAES(
+		JSON.stringify({
+			requestId: time,
+			transId: bank.transId,
+			serviceId: bank.serviceId,
+			lang: 'vi',
+			channel: 'APP',
+			appVer: config.appVer,
+			appCode: config.appCode,
+			deviceOS: 'IOS',
+			buildNumber: 0,
+			appId: 'vn.momo.transactionhistory',
+		}),
+		'123456789012345678901234567890aa'
+	)
+	let response = await postAxios2('https://api.momo.vn/sync/transhis/details', data, {
+		'Content-Type': 'application/json',
+		requestkey: config.requestkey,
+		Authorization: `Bearer ${jwt_token}`,
+	})
+	if (response.resultCode != 0) return
+	let comment = response.momoMsg.serviceData
+		? JSON.parse(response.momoMsg.serviceData).COMMENT_VALUE
+		: JSON.parse(response.momoMsg.oldData).commentValue
+	await Transaction.findByIdAndUpdate(bank._id, {
+		status: true,
+		comment,
+	})
+}
+
+const GET_BALANCE = async (req, res, next) => {
+	return res.status(200).json({
+		success: true,
+		message: 'Thanh cong',
+		data: { balance: req.bank.balance },
+	})
+}
+
+module.exports = {
+	CHECK_USER_PRIVATE,
+	M2MU_INIT,
+	M2MU_CONFIRM,
+	SOF_LIST_MANAGER_MSG,
+	CHECK_MONEY,
+	SEND_OTP_MOMO,
+	createImei,
+	CHECK_USER_BE_MSG,
+	SEND_OTP_MSG,
+	REG_DEVICE_MSG,
+	USER_LOGIN_MSG,
+	CONFIRM_OTP_MOMO,
+	GET_BALANCE,
 }

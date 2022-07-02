@@ -141,7 +141,7 @@ const schemas = {
 			.required(),
 	}),
 	typeBankSchema: Joi.object().keys({
-		param: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb').required(),
+		param: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb', 'momo').required(),
 	}),
 	typeWalletSchema: Joi.object().keys({
 		param: Joi.string().valid('momo', 'zalopay').required(),
@@ -161,6 +161,62 @@ const schemas = {
 	}),
 	extendSchema: Joi.object().keys({
 		period: Joi.number().min(1).max(6).required(),
+	}),
+	tranferData: Joi.object().keys({
+		token: Joi.string()
+			.guid({
+				version: ['uuidv4'],
+			})
+			.required(),
+		numberPhone: Joi.string()
+			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.required()
+			.messages({
+				'string.empty': `Số điện thoại không được bỏ trống`,
+				'string.pattern.base': `Số điện thoại không hợp lệ`,
+				'any.required': `Thiếu email gửi lên`,
+			}),
+		amount: Joi.number().min(100).max(20000000).required(),
+		comment: Joi.string().empty('').default(null),
+		password: Joi.string()
+			.regex(/^[0-9]{6}$/)
+			.required(),
+	}),
+	getOTPWallet: Joi.object().keys({
+		phone: Joi.string()
+			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.required()
+			.messages({
+				'string.empty': `Số điện thoại không được bỏ trống`,
+				'string.pattern.base': `Số điện thoại không hợp lệ`,
+				'any.required': `Thiếu Số điện thoại gửi lên`,
+			}),
+	}),
+	confirmOTPWallet: Joi.object().keys({
+		phone: Joi.string()
+			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.required()
+			.messages({
+				'string.empty': `Số điện thoại không được bỏ trống`,
+				'string.pattern.base': `Số điện thoại không hợp lệ`,
+				'any.required': `Thiếu email gửi lên`,
+			}),
+		otp: Joi.string()
+			.regex(/^[0-9]{6}$/)
+			.required(),
+		password: Joi.string()
+			.regex(/^[0-9]{6}$/)
+			.required(),
+		_id: Joi.string()
+			.regex(/^[0-9a-zA-Z]{24}$/)
+			.required(),
+	}),
+	tokenSchema: Joi.object().keys({
+		token: Joi.string()
+			.guid({
+				version: ['uuidv4'],
+			})
+			.required(),
 	}),
 }
 
