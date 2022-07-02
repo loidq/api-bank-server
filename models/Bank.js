@@ -61,6 +61,10 @@ const BankSchema = new Schema(
 		errorCode: {
 			type: Number,
 		},
+		newLogin: {
+			type: Boolean,
+			default: true,
+		},
 		lastLogin: {
 			type: Date,
 		},
