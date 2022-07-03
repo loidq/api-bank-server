@@ -979,14 +979,9 @@ const browse = async (bank) => {
 			}
 		}
 	}
-	await Bank.findByIdAndUpdate(bank._id, {
-		newLogin: false,
-	})
 }
 
 const details = async (bank) => {
-	let check = await Bank.findOne({ _id: bank.banks, status: 1 })
-	if (!check) return console.log('Khong tim thay')
 	let time = new Date().getTime()
 	let data = encryptAES(
 		JSON.stringify({
@@ -1006,7 +1001,7 @@ const details = async (bank) => {
 	let response = await postAxios2('https://api.momo.vn/sync/transhis/details', data, {
 		'Content-Type': 'application/json',
 		requestkey: config.requestkey,
-		Authorization: `Bearer ${check.jwt_token}`,
+		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
 	if (response.resultCode != 0) return
 	let comment = response.momoMsg.serviceData
@@ -1018,22 +1013,98 @@ const details = async (bank) => {
 	})
 }
 
-const cronNewLogin = async () => {
-	let data = await Bank.find({
-		status: 1,
-		newLogin: true,
-		bank: 'momo',
+const cronBrowseNew = async () => {
+	let data = await Deck.find(
+		{
+			type: 'momo',
+			expired: {
+				$gt: new Date(),
+			},
+			banks: {
+				$ne: null,
+			},
+		},
+		{
+			_id: 0,
+			banks: 1,
+		}
+	).populate({
+		path: 'banks',
+		match: {
+			status: 1,
+			newLogin: true,
+			bank: 'momo',
+		},
+		select: {
+			owner: 1,
+			jwt_token: 1,
+			newLogin: 1,
+		},
 	})
-
+	data = data.filter((item) => item.banks != null)
 	for (var i in data) {
-		await browse(data[i])
+		await browse(data[i].banks)
+		await Bank.findByIdAndUpdate(data[i].banks._id, {
+			newLogin: false,
+		})
 	}
 }
+
+const cronBrowse = async () => {
+	let data = await Deck.find(
+		{
+			type: 'momo',
+			expired: {
+				$gt: new Date(),
+			},
+			banks: {
+				$ne: null,
+			},
+		},
+		{
+			_id: 0,
+			banks: 1,
+		}
+	).populate({
+		path: 'banks',
+		match: {
+			status: 1,
+			newLogin: false,
+			bank: 'momo',
+		},
+		select: {
+			owner: 1,
+			jwt_token: 1,
+			newLogin: 1,
+		},
+	})
+	data = data.filter((item) => item.banks != null)
+	for (var i in data) {
+		await browse(data[i].banks)
+	}
+}
+
 const cronDetails = async () => {
-	let data = await Transaction.find({
-		status: false,
+	let data = await Transaction.find(
+		{
+			status: false,
+		},
+		{
+			transId: 1,
+			serviceId: 1,
+		}
+	).populate({
+		path: 'banks',
+		match: {
+			status: 1,
+		},
+		select: {
+			_id: 0,
+			jwt_token: 1,
+		},
 	})
 
+	data = data.filter((item) => item.banks != null)
 	for (var i in data) {
 		await details(data[i])
 	}
