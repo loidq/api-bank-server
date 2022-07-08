@@ -4,6 +4,7 @@ const passport = require('passport')
 const passportConfig = require('../middlewares/passport')
 
 const MomoController = require('../main/momo')
+const WalletController = require('../controllers/wallet')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 
@@ -14,7 +15,7 @@ router
 		validateBody(schemas.tranferData),
 		DeckController.checkDate,
 		MomoController.SOF_LIST_MANAGER_MSG,
-		MomoController.CHECK_MONEY,
+		WalletController.CHECK_MONEY,
 		MomoController.CHECK_USER_PRIVATE,
 		MomoController.M2MU_INIT,
 		MomoController.M2MU_CONFIRM
@@ -26,10 +27,10 @@ router
 		validateParam(schemas.typeWalletSchema, 'bank'),
 		validateBody(schemas.getOTPWallet),
 		DeckController.checkExpired,
-		MomoController.createImei,
+		WalletController.createImei,
 		MomoController.CHECK_USER_BE_MSG,
 		MomoController.SEND_OTP_MSG,
-		MomoController.SEND_OTP_MOMO
+		WalletController.SEND_OTP_MOMO
 	)
 router
 	.route('/:bank/confirmOTP')
@@ -39,7 +40,7 @@ router
 		validateBody(schemas.confirmOTPWallet),
 		MomoController.REG_DEVICE_MSG,
 		MomoController.USER_LOGIN_MSG,
-		MomoController.CONFIRM_OTP_MOMO
+		WalletController.CONFIRM_OTP_MOMO
 	)
 router
 	.route('/:bank/getBalance')
@@ -48,6 +49,10 @@ router
 		validateBody(schemas.tokenSchema),
 		DeckController.checkDate,
 		MomoController.SOF_LIST_MANAGER_MSG,
-		MomoController.GET_BALANCE
+		WalletController.GET_BALANCE
 	)
+
+router
+	.route('/:bank/getTransaction')
+	.get(validateParam(schemas.typeWalletSchema, 'bank'), validateBody(schemas.tokenSchema), DeckController.checkDate, WalletController.GET_TRANSACTION)
 module.exports = router

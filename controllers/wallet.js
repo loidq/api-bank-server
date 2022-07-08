@@ -1,18 +1,31 @@
 const { newError, uuidv4 } = require('../helpers/routerHelpers')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
-const newWallet = async (req, res, next) => {
-	const deck = req.deck
-	const { _id } = req.user
+const Transaction = require('../models/Transaction')
+const createImei = async (req, res, next) => {
+	if (!req.bank) req.bank = {}
+	req.bank.imei = uuidv4()
+
 	let { bank } = req.value.params
-	let { username } = req.value.body
-	if (await Bank.findOne({ bank, username }))
+	let { phone } = req.value.body
+
+	if (await Bank.findOne({ bank, phone }))
 		newError({
 			status: 400,
 			message: 'Tài khoản này đã tồn tại trong hệ thống.',
 		})
 
-	const newBank = new Bank({ bank, username, owner: _id, token: uuidv4(), decks: deck._id })
+	next()
+}
+
+const SEND_OTP_MOMO = async (req, res, next) => {
+	const deck = req.deck
+	const { _id } = req.user
+	let { imei } = req.bank
+	let { bank } = req.value.params
+	let { phone } = req.value.body
+
+	const newBank = new Bank({ bank, phone, imei, owner: _id, token: uuidv4(), decks: deck._id, status: 99 })
 	await newBank.save()
 	// Add newly created bank to the actual banks
 
@@ -21,14 +34,71 @@ const newWallet = async (req, res, next) => {
 	})
 	return res.status(200).json({
 		success: true,
-		message: 'Bạn đã thêm tài khoản thành công.',
+		message: 'Lấy OTP thành công.',
+		data: {
+			_id: newBank._id,
+		},
+	})
+}
+
+const CONFIRM_OTP_MOMO = async (req, res, next) => {
+	return res.status(200).json({
+		success: true,
+		message: 'Thêm tài khoản thành công.',
 		data: {},
 	})
 }
 
-module.exports = {
-	deleteWallet,
-	newBank,
-	updateBank,
-	listBank,
+const CHECK_MONEY = async (req, res, next) => {
+	let { balance, phone } = req.bank
+	let { amount, password, numberPhone } = req.value.body
+	if (amount > balance)
+		newError({
+			status: 400,
+			message: 'Tài khoản của bạn không đủ số dư.',
+		})
+	if (password != req.bank.password)
+		newError({
+			status: 400,
+			message: 'Mật khẩu của bạn không chính xác.',
+		})
+	if (numberPhone == phone)
+		newError({
+			status: 400,
+			message: 'Tài khoản nhận phải khác tài khoản gửi',
+		})
+	next()
 }
+
+const GET_BALANCE = async (req, res, next) => {
+	return res.status(200).json({
+		success: true,
+		message: 'Thành công',
+		data: { balance: req.bank.balance },
+	})
+}
+
+const GET_TRANSACTION = async (req, res, next) => {
+	const { _id } = req.bank
+
+	const list = await Transaction.find(
+		{
+			banks: _id,
+			status: true,
+		},
+		{ _id: 0, banks: 0, owner: 0, createdAt: 0, updatedAt: 0, __v: 0, status: 0, serviceId: 0 }
+	).sort({
+		time: -1,
+	})
+
+	let total = await Transaction.countDocuments({
+		banks: _id,
+		status: true,
+	})
+
+	//const accounts = await await Bank.find({ owner: userID, bank },	{ username: 1, status: 1, createdAt: 1, bank: 1 }).limit(pageSize).skip(pageSize * (pageIndex - 1))
+
+	return res.status(200).json({ success: true, data: list, total })
+}
+
+module.exports = { createImei, SEND_OTP_MOMO, CONFIRM_OTP_MOMO, CHECK_MONEY, GET_BALANCE, GET_TRANSACTION }

@@ -6,6 +6,7 @@ const dayjs = require('dayjs')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
+const { Promise } = require('mongoose')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -72,7 +73,7 @@ function isObject(obj) {
 const isJson = async (str) => {
 	if (!str)
 		newError({
-			message: 'Server Momo loi du lieu, vui long thu lai sau',
+			message: 'Server MoMo đang lỗi dữ liệu, vui lòng thử lại sau.',
 			status: 400,
 		})
 	if (isObject(str)) {
@@ -91,6 +92,7 @@ const postAxios = async (url, data, headers, proxy = null) => {
 		validateStatus: () => true,
 		httpsAgent: proxy,
 	})
+
 	if (response.status != 200) {
 		let error = new Error({
 			url,
@@ -127,51 +129,6 @@ const postAxios2 = async (url, data, headers, proxy = null) => {
 	return isJson2(response.data)
 }
 
-const createImei = async (req, res, next) => {
-	if (!req.bank) req.bank = {}
-	req.bank.imei = uuidv4()
-
-	let { bank } = req.value.params
-	let { phone } = req.value.body
-
-	if (await Bank.findOne({ bank, phone }))
-		newError({
-			status: 400,
-			message: 'Tài khoản này đã tồn tại trong hệ thống.',
-		})
-
-	next()
-}
-
-const SEND_OTP_MOMO = async (req, res, next) => {
-	const deck = req.deck
-	const { _id } = req.user
-	let { imei } = req.bank
-	let { bank } = req.value.params
-	let { phone } = req.value.body
-
-	const newBank = new Bank({ bank, phone, imei, owner: _id, token: uuidv4(), decks: deck._id, status: 99 })
-	await newBank.save()
-	// Add newly created bank to the actual banks
-
-	await Deck.findByIdAndUpdate(deck._id, {
-		banks: newBank._id,
-	})
-	return res.status(200).json({
-		success: true,
-		message: 'Lay OTP thanh cong.',
-		data: {
-			_id: newBank._id,
-		},
-	})
-}
-const CONFIRM_OTP_MOMO = async (req, res, next) => {
-	return res.status(200).json({
-		success: true,
-		message: 'Them tai khoan thanh cong.',
-		data: {},
-	})
-}
 const CHECK_USER_BE_MSG = async (req, res, next) => {
 	let { phone } = req.value.body
 	let { imei } = req.bank
@@ -287,7 +244,7 @@ const REG_DEVICE_MSG = async (req, res, next) => {
 	if (!check)
 		newError({
 			status: 400,
-			message: 'Co loi trong qua trinh xu li',
+			message: 'Có lỗi trong quá trình xử lí, vui lòng thử lại sau.',
 		})
 	req.bank = check
 	let { phone, imei } = req.bank
@@ -457,6 +414,7 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 
 const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	let { jwt_token, phone, _id, lastLogin } = req.bank
+
 	if (new Date() - lastLogin > 5300000) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
 	let time = new Date().getTime(),
 		checkSum = generateCheckSum(req.bank, 'SOF_LIST_MANAGER_MSG', time)
@@ -493,7 +451,7 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	})
 
 	if (!response.result) {
-		if (response.errorCode == -87) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
+		if (response.errorCode == -83) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
 		newError({
 			message: response.errorDesc,
 			status: 400,
@@ -503,7 +461,9 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	await Bank.findByIdAndUpdate(_id, {
 		balance: response.momoMsg.sofInfo[0].balance,
 	})
+
 	req.bank.balance = response.momoMsg.sofInfo[0].balance
+
 	next()
 }
 
@@ -594,12 +554,13 @@ const CHECK_USER_PRIVATE = async (req, res, next) => {
 	})
 	if (!response.result)
 		newError({
-			message: response.errorDesc || 'So dien thoai chua dang ky Vi MoMo',
+			message: response.errorDesc || 'Số điện thoại chưa đăng ký MoMo.',
 			status: 400,
 		})
 	if (!req.info) req.info = {}
 	req.info.NAME = response.extra.NAME
 	req.info.NAME_KYC = response.extra.NAME_KYC
+
 	next()
 }
 
@@ -736,6 +697,7 @@ const M2MU_INIT = async (req, res, next) => {
 	if (!response.result) newError({ message: response.errorDesc, status: 400 })
 	req.info.ID = response.momoMsg.replyMsgs[0].ID
 	req.info.tranHisMsg = response.momoMsg.replyMsgs[0].tranHisMsg
+
 	next()
 }
 
@@ -805,10 +767,12 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	let check = await Transaction.findOne({
 		transId: response.momoMsg.replyMsgs[0].transId,
 	})
+
 	if (!check) {
 		let transaction = new Transaction({
+			serviceId: response.momoMsg.replyMsgs[0].tranHisMsg.serviceId,
 			io: -1,
-			time: response.momoMsg.replyMsgs[0].finishTime,
+			time: response.momoMsg.replyMsgs[0].tranHisMsg.finishTime,
 			transId: response.momoMsg.replyMsgs[0].transId,
 			partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
 			partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
@@ -827,7 +791,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 
 	req.info.transaction = {
 		io: -1,
-		time: response.momoMsg.replyMsgs[0].finishTime,
+		time: response.momoMsg.replyMsgs[0].tranHisMsg.finishTime,
 		transId: response.momoMsg.replyMsgs[0].transId,
 		partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
 		partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
@@ -840,27 +804,6 @@ const M2MU_CONFIRM = async (req, res, next) => {
 		message: 'Thanh cong',
 		data: req.info.transaction,
 	})
-}
-
-const CHECK_MONEY = async (req, res, next) => {
-	let { balance, phone } = req.bank
-	let { amount, password, numberPhone } = req.value.body
-	if (amount > balance)
-		newError({
-			status: 400,
-			message: 'Tai khoan cua quy khach khong du so du',
-		})
-	if (password != req.bank.password)
-		newError({
-			status: 400,
-			message: 'Mat khau cua ban khong chinh xac',
-		})
-	if (numberPhone == phone)
-		newError({
-			status: 400,
-			message: 'Tài khoản nhận phải khác tài khoản gửi',
-		})
-	next()
 }
 
 const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
@@ -949,36 +892,37 @@ const browse = async (bank) => {
 	})
 	if (response.resultCode != 0) return
 	let transactions = response.momoMsg
-	for (var i in transactions) {
-		if (
-			transactions[i].errorCode == 0 &&
-			transactions[i].lastUpdate <= toDate &&
-			transactions[i].lastUpdate >= fromDate &&
-			(transactions[i].serviceId == 'transfer_p2p_globalsearch' ||
-				transactions[i].serviceId == 'transfer_via_chat' ||
-				transactions[i].serviceId == 'transfer_p2p')
-		) {
-			let check = await Transaction.findOne({
-				banks: bank._id,
-				transId: transactions[i].transId,
-			})
-			if (!check) {
-				let transaction = new Transaction({
-					owner: bank.owner,
+
+	Promise.allSettled(
+		transactions.map(async (item) => {
+			if (
+				item.errorCode == 0 &&
+				item.lastUpdate <= toDate &&
+				item.lastUpdate >= fromDate &&
+				(item.serviceId == 'transfer_p2p_globalsearch' || item.serviceId == 'transfer_via_chat' || item.serviceId == 'transfer_p2p')
+			) {
+				let check = await Transaction.findOne({
 					banks: bank._id,
-					io: transactions[i].io,
-					serviceId: transactions[i].serviceId,
-					transId: transactions[i].transId,
-					partnerId: transactions[i].io == -1 ? transactions[i].targetId : transactions[i].sourceId,
-					partnerName: transactions[i].io == -1 ? transactions[i].targetName : transactions[i].sourceName,
-					amount: transactions[i].totalOriginalAmount,
-					postBalance: transactions[i].postBalance,
-					time: transactions[i].lastUpdate,
+					transId: item.transId,
 				})
-				await transaction.save()
+				if (!check) {
+					let transaction = new Transaction({
+						owner: bank.owner,
+						banks: bank._id,
+						io: item.io,
+						serviceId: item.serviceId,
+						transId: item.transId,
+						partnerId: item.io == -1 ? item.targetId : item.sourceId,
+						partnerName: item.io == -1 ? item.targetName : item.sourceName,
+						amount: item.totalOriginalAmount,
+						postBalance: item.postBalance,
+						time: item.lastUpdate,
+					})
+					await transaction.save()
+				}
 			}
-		}
-	}
+		})
+	)
 }
 
 const details = async (bank) => {
@@ -1013,123 +957,15 @@ const details = async (bank) => {
 	})
 }
 
-const cronBrowseNew = async () => {
-	let data = await Deck.find(
-		{
-			type: 'momo',
-			expired: {
-				$gt: new Date(),
-			},
-			banks: {
-				$ne: null,
-			},
-		},
-		{
-			_id: 0,
-			banks: 1,
-		}
-	).populate({
-		path: 'banks',
-		match: {
-			status: 1,
-			newLogin: true,
-			bank: 'momo',
-		},
-		select: {
-			owner: 1,
-			jwt_token: 1,
-			newLogin: 1,
-		},
-	})
-	data = data.filter((item) => item.banks != null)
-	for (var i in data) {
-		await browse(data[i].banks)
-		await Bank.findByIdAndUpdate(data[i].banks._id, {
-			newLogin: false,
-		})
-	}
-}
-
-const cronBrowse = async () => {
-	let data = await Deck.find(
-		{
-			type: 'momo',
-			expired: {
-				$gt: new Date(),
-			},
-			banks: {
-				$ne: null,
-			},
-		},
-		{
-			_id: 0,
-			banks: 1,
-		}
-	).populate({
-		path: 'banks',
-		match: {
-			status: 1,
-			newLogin: false,
-			bank: 'momo',
-		},
-		select: {
-			owner: 1,
-			jwt_token: 1,
-			newLogin: 1,
-		},
-	})
-	data = data.filter((item) => item.banks != null)
-	for (var i in data) {
-		await browse(data[i].banks)
-	}
-}
-
-const cronDetails = async () => {
-	let data = await Transaction.find(
-		{
-			status: false,
-		},
-		{
-			transId: 1,
-			serviceId: 1,
-		}
-	).populate({
-		path: 'banks',
-		match: {
-			status: 1,
-		},
-		select: {
-			_id: 0,
-			jwt_token: 1,
-		},
-	})
-
-	data = data.filter((item) => item.banks != null)
-	for (var i in data) {
-		await details(data[i])
-	}
-}
-
-const GET_BALANCE = async (req, res, next) => {
-	return res.status(200).json({
-		success: true,
-		message: 'Thanh cong',
-		data: { balance: req.bank.balance },
-	})
-}
-
 module.exports = {
 	CHECK_USER_PRIVATE,
 	M2MU_INIT,
 	M2MU_CONFIRM,
 	SOF_LIST_MANAGER_MSG,
-	CHECK_MONEY,
-	SEND_OTP_MOMO,
-	createImei,
 	CHECK_USER_BE_MSG,
 	SEND_OTP_MSG,
 	REG_DEVICE_MSG,
 	USER_LOGIN_MSG,
-	CONFIRM_OTP_MOMO,
-	GET_BALANCE,
+	browse,
+	details,
 }
