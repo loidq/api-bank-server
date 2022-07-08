@@ -38,6 +38,7 @@ router
 		passport.authenticate('jwt', { session: false }),
 		validateParam(schemas.typeWalletSchema, 'bank'),
 		validateBody(schemas.confirmOTPWallet),
+		WalletController.createImei,
 		MomoController.REG_DEVICE_MSG,
 		MomoController.USER_LOGIN_MSG,
 		WalletController.CONFIRM_OTP_MOMO

@@ -4,7 +4,7 @@ const Deck = require('../models/Deck')
 const Transaction = require('../models/Transaction')
 const createImei = async (req, res, next) => {
 	if (!req.bank) req.bank = {}
-	req.bank.imei = uuidv4()
+	if (!req.bank.imei) req.bank.imei = uuidv4()
 
 	let { bank } = req.value.params
 	let { phone } = req.value.body
