@@ -4,7 +4,7 @@
   "description": "backend",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
+    "dev": "nodemon --trace-warnings index.js",
     "start": "node index.js"
   },
   "author": "Sow",
@@ -19,6 +19,7 @@
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
+    "cron-job-manager": "^2.3.0",
     "crypto": "^1.0.1",
     "dayjs": "^1.11.3",
     "dotenv": "^16.0.1",
