@@ -73,17 +73,20 @@ const extend = async (req, res, next) => {
 const listDeck = async (req, res, next) => {
 	const { _id } = req.user
 
-	let decks = await Deck.find(
+	let list = await Deck.find(
 		{
 			owner: _id,
 		},
 		{ _id: 0, expired: 1, type: 1, banks: 1 }
 	)
+	let total = await Deck.countDocuments({
+		owner: _id,
+	})
 
 	return res.status(200).json({
 		success: true,
 		message: 'Thành công.',
-		data: { list: decks, total: decks.length },
+		data: { list, total },
 	})
 }
 
