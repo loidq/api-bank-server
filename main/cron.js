@@ -75,11 +75,7 @@ const cronBrowse = async () => {
 		},
 	})
 	data = data.filter((item) => item.banks != null)
-	Promise.allSettled(
-		data.map(async (item) => {
-			await browse(item.banks)
-		})
-	)
+	Promise.allSettled(data.map(async (item) => await browse(item.banks)))
 }
 
 const cronDetails = async () => {
@@ -104,11 +100,7 @@ const cronDetails = async () => {
 
 	data = data.filter((item) => item.banks != null)
 
-	Promise.allSettled(
-		data.map(async (item) => {
-			await details(item)
-		})
-	)
+	Promise.allSettled(data.map(async (item) => await details(item)))
 }
 
 manager.add('cronBrowseNew', `*/5 * * * * *`, async () => {
@@ -149,13 +141,13 @@ manager.add('cronBalance', `*/5 * * * * *`, async () => {
 	})
 	data = data.filter((item) => item.banks != null)
 
-	Promise.allSettled(
+	await Promise.allSettled(
 		data.map((item) =>
 			axios.get('http://localhost:3000/wallet/momo/getBalance', {
 				data: {
 					token: item.banks.token,
 				},
-				timeout: 2500,
+				timeout: 2000,
 				validateStatus: () => true,
 			})
 		)

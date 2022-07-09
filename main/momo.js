@@ -106,7 +106,7 @@ const postAxios = async (url, data, headers, proxy = null) => {
 }
 
 const isJson2 = async (str) => {
-	if (!str) console.log('Loi du lieu tu Server MoMo')
+	if (!str) return
 	if (isObject(str)) return str
 	else return JSON.parse(decryptAES(str, '123456789012345678901234567890aa'))
 }
@@ -848,7 +848,7 @@ const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
 	if (!response.result) {
 		await USER_LOGIN_MSG(req, res, next)
 		newError({
-			message: response.errorDesc || `Lấy Authorization thất bại. [${response.errorCode}]`,
+			message: response.errorDesc || response.description || `Lấy Authorization thất bại.`,
 			status: 400,
 		})
 	} else {
