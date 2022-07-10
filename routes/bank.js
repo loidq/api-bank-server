@@ -7,6 +7,8 @@ const BankController = require('../controllers/bank')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 
+const Vietcombank = require('../main/vietcombank')
+
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -26,4 +28,21 @@ router
 		BankController.updateBank
 	)
 	.delete(passport.authenticate('jwt', { session: false }), validateParam(schemas.idSchema, 'bankID'), BankController.deleteBank)
+
+router
+	.route('/:bank/login')
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.Login)
+
+router
+	.route('/:bank/getBalance')
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.GET_BALANCE)
+
+router
+	.route('/:bank/getTransaction')
+	.get(
+		validateParam(schemas.typeBankSchema, 'bank'),
+		validateBody(schemas.transactionBankSchema),
+		DeckController.checkDate,
+		Vietcombank.GET_TRANSACTION
+	)
 module.exports = router

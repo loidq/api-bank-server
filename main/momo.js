@@ -6,7 +6,6 @@ const dayjs = require('dayjs')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
-const { Promise } = require('mongoose')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -91,6 +90,7 @@ const postAxios = async (url, data, headers, proxy = null) => {
 		headers,
 		validateStatus: () => true,
 		httpsAgent: proxy,
+		timeout: 5000,
 	})
 
 	if (response.status != 200) {
@@ -457,11 +457,9 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 			status: 400,
 		})
 	}
-
 	await Bank.findByIdAndUpdate(_id, {
 		balance: response.momoMsg.sofInfo[0].balance,
 	})
-
 	req.bank.balance = response.momoMsg.sofInfo[0].balance
 
 	next()
@@ -801,7 +799,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	}
 	return res.status(200).json({
 		success: true,
-		message: 'Thanh cong',
+		message: 'Thành công',
 		data: req.info.transaction,
 	})
 }

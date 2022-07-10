@@ -4,7 +4,7 @@
   "description": "backend",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --trace-warnings index.js",
+    "dev": "nodemon index.js",
     "start": "node index.js"
   },
   "author": "Sow",
@@ -25,6 +25,7 @@
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "express-promise-router": "^4.1.1",
+    "image-to-base64": "^2.2.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.4.0",
     "otplib": "^12.0.1",
