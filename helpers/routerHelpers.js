@@ -218,6 +218,24 @@ const schemas = {
 			})
 			.required(),
 	}),
+
+	blanceBankSchema: Joi.object().keys({
+		token: Joi.string()
+			.guid({
+				version: ['uuidv4'],
+			})
+			.required(),
+		password: Joi.string().min(6).required(),
+	}),
+	transactionBankSchema: Joi.object().keys({
+		token: Joi.string()
+			.guid({
+				version: ['uuidv4'],
+			})
+			.required(),
+		password: Joi.string().min(6).required(),
+		accountNumber: Joi.string().required(),
+	}),
 }
 
 module.exports = {
