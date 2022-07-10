@@ -114,7 +114,7 @@ manager.add('cronDetails', `*/5 * * * * *`, async () => {
 	await cronDetails()
 })
 
-manager.add('cronBalance', `*/5 * * * * *`, async () => {
+manager.add('cronBalance', `*/10 * * * * *`, async () => {
 	let data = await Deck.find(
 		{
 			type: 'momo',
@@ -141,7 +141,7 @@ manager.add('cronBalance', `*/5 * * * * *`, async () => {
 	})
 	data = data.filter((item) => item.banks != null)
 
-	await Promise.allSettled(
+	Promise.allSettled(
 		data.map((item) =>
 			axios.get('http://localhost:3000/wallet/momo/getBalance', {
 				data: {
@@ -155,7 +155,7 @@ manager.add('cronBalance', `*/5 * * * * *`, async () => {
 })
 
 console.log('Start Cron')
-manager.start('cronBrowseNew')
-manager.start('cronBrowse')
-manager.start('cronDetails')
-manager.start('cronBalance')
+// manager.start('cronBrowseNew')
+// manager.start('cronBrowse')
+// manager.start('cronDetails')
+// manager.start('cronBalance')
