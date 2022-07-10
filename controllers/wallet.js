@@ -114,7 +114,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 			.limit(limit)
 			.skip(skip)
 			.sort({
-				time: 1,
+				time: -1,
 			}),
 		Transaction.countDocuments({
 			banks: _id,
