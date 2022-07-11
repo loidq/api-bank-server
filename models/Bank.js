@@ -36,6 +36,9 @@ const BankSchema = new Schema(
 		access_token: {
 			type: String,
 		},
+		accountNumber: {
+			type: String,
+		},
 		sessionId: {
 			type: String,
 		},

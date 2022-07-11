@@ -17,18 +17,15 @@ const config = {
 
 const encryptAES = (body, key) => {
 	let iv = Buffer.alloc(0),
-		cipher = crypto.createCipheriv('aes-256-ecb', key, iv),
-		part1 = cipher.update(body, 'utf8'),
-		part2 = cipher.final()
-
-	return Buffer.concat([part1, part2]).toString('base64')
+		cipher = crypto.createCipheriv('aes-256-ecb', key, null)
+	return cipher.update(JSON.stringify(body), 'utf8', 'base64') + cipher.final('base64')
 }
 
 const decryptAES = (body, key) => {
-	let iv = Buffer.alloc(0),
-		cipher = crypto.createDecipheriv('aes-256-ecb', key, iv)
-	cipher.update(body, 'base64')
-	return cipher.final('utf8')
+	let iv = Buffer.alloc(32),
+		cipher = crypto.createDecipheriv('aes-192-ecb', Buffer.from(key, 'base64'), null)
+
+	return cipher.update(body, 'base64', 'utf8') + cipher.final('utf8')
 }
 
 const encryptRSA = (body) => {
@@ -40,15 +37,17 @@ const decryptRSA = (body) => {
 }
 
 const encryptData = (body) => {
-	let keyEncrypt = encryptRSA(config.key)
-	let dataEncrypt = encryptAES(JSON.stringify(body), config.key)
+	let keyEncrypt = encryptRSA(Buffer.from(config.key).toString('base64'))
+
+	let dataEncrypt = encryptAES(body, config.key)
 	return keyEncrypt + '@@@@@@' + dataEncrypt
 }
 
 const decryptData = (body) => {
 	let keyDecrypt = decryptRSA(body.substring(0, 344))
-	console.log(keyDecrypt)
+
 	let dataDecypt = decryptAES(body.substring(344), keyDecrypt)
+
 	return JSON.parse(dataDecypt)
 }
 
@@ -83,18 +82,16 @@ const isJson = (str) => {
 	}
 }
 
-const postAxios = async (url, data, headers, proxy = null) => {
+const postAxios = async (url, data, headers) => {
 	let response = await axios.post(url, data, {
 		headers: {
 			...headers,
 			'Content-Type': 'application/json',
 		},
 		validateStatus: () => true,
-		httpsAgent: proxy,
 		timeout: 5000,
 	})
-
-	if (response.status != 200) {
+	if (response.status != 200 || response.data.code != '00') {
 		let error = new Error({
 			url,
 			data: response.data,
@@ -102,7 +99,25 @@ const postAxios = async (url, data, headers, proxy = null) => {
 		})
 		await error.save()
 	}
-	let responseDecrypt = isJson(response.data)
+
+	if (response.data.code != '00') {
+		if (headers._id && (response.data.code == '108' || response.data.code == 'EXP' || response.data.code == 'KICKOUT')) {
+			await Bank.findByIdAndUpdate(headers._id, {
+				newLogin: true,
+			})
+		}
+		newError({
+			message: response.data.des,
+			status: 400,
+		})
+	}
+
+	let responseDecrypt = isJson(response.data.data)
+	if (headers._id && (responseDecrypt.code == '108' || responseDecrypt.code == 'EXP' || responseDecrypt.code == 'KICKOUT')) {
+		await Bank.findByIdAndUpdate(headers._id, {
+			newLogin: true,
+		})
+	}
 	await saveError(responseDecrypt, url)
 	return { response: responseDecrypt, headers: response.headers }
 }
@@ -118,20 +133,33 @@ const Login = async (req, res, next) => {
 		clientKey: config.public,
 		lang: 'vi',
 	}
-	let { response, headers } = await postAxios('https://vcbdigibank.vietcombank.com.vn/w1/auth', encryptData(data))
+
+	let { response, headers } = await postAxios(
+		'https://vcbdigibank.vietcombank.com.vn/w1/auth',
+		{
+			data: encryptData(data),
+		},
+		{
+			_id: false,
+		}
+	)
 	let cookies = headers['set-cookie']
 	let jwt_token = response.token
+
 	await Bank.findByIdAndUpdate(_id, {
 		jwt_token,
 		cookies,
+		accountNumber: response.user_info.defaultAccount,
+		newLogin: false,
 	})
 	req.bank.jwt_token = jwt_token
 	req.bank.cookies = cookies
-	return res.status(200).json(response)
+	req.bank.newLogin = false
 }
 
 const GET_BALANCE = async (req, res, next) => {
-	let { jwt_token, cookies, username } = req.bank
+	let { jwt_token, cookies, username, newLogin, _id } = req.bank
+	if (newLogin) await Login(req, res, next)
 	let data = {
 		user_name: username,
 		data: {
@@ -144,6 +172,7 @@ const GET_BALANCE = async (req, res, next) => {
 		client_key: config.public,
 		lang: 'vi',
 	}
+
 	let { response, headers } = await postAxios(
 		'https://vcbdigibank.vietcombank.com.vn/w1/process-ib',
 		{
@@ -151,10 +180,12 @@ const GET_BALANCE = async (req, res, next) => {
 			mid: 'laydanhsachtaikhoan',
 		},
 		{
-			Authorization: `Bearer ${jwt_token}`,
-			Cookie: cookies,
+			Authorization: `Bearer ${req.bank.jwt_token}`,
+			Cookie: req.bank.cookies,
+			_id,
 		}
 	)
+
 	return res.status(200).json({
 		success: true,
 		message: 'Thành công',
@@ -164,6 +195,10 @@ const GET_BALANCE = async (req, res, next) => {
 
 const GET_TRANSACTION = async (req, res, next) => {
 	let { accountNumber } = req.value.body
+	let { username, jwt_token, cookies, newLogin, _id } = req.bank
+
+	if (newLogin) await Login(req, res, next)
+
 	let dayNow = new Date()
 	let toDate = dayjs(dayNow).format('DD/MM/YYYY')
 	let fromDate = dayjs(dayNow.setDate(dayNow.getDate() - 3)).format('DD/MM/YYYY')
@@ -193,8 +228,9 @@ const GET_TRANSACTION = async (req, res, next) => {
 			mid: 'laysaoketaikhoan',
 		},
 		{
-			Authorization: `Bearer ${jwt_token}`,
-			Cookie: cookies,
+			Authorization: `Bearer ${req.bank.jwt_token}`,
+			Cookie: req.bank.cookies,
+			_id,
 		}
 	)
 	return res.status(200).json({
@@ -226,15 +262,14 @@ const captcha = async () => {
 	let { data: response, status } = await axios.post('https://vcbdigibank.vietcombank.com.vn/w1/valid-captcha', body, {
 		validateStatus: () => true,
 	})
+
 	if (response.code != '00') newError({ message: response.des || 'Capcha Vietconbank đang gặp vấn đề, vui lòng thử lại sau.', status: 400 })
+
 	return uuid
 }
-// module.exports = {
-// 	Login,
-// 	GET_BALANCE,
-// 	GET_TRANSACTION,
-// }
-let en = encryptData('123123')
-console.log(en)
-let de = decryptData(en)
-console.log(en)
+
+module.exports = {
+	Login,
+	GET_BALANCE,
+	GET_TRANSACTION,
+}
