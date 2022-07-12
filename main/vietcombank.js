@@ -99,25 +99,31 @@ const postAxios = async (url, data, headers) => {
 		})
 		await error.save()
 	}
-
 	if (response.data.code != '00') {
-		if (headers._id && (response.data.code == '108' || response.data.code == 'EXP' || response.data.code == 'KICKOUT')) {
+		if (
+			headers._id &&
+			(response.data.code == '108' || response.data.code == 'EXP' || response.data.code == 'KICKOUT' || response.data.code == 'Unauthorized')
+		) {
 			await Bank.findByIdAndUpdate(headers._id, {
 				newLogin: true,
 			})
 		}
 		newError({
-			message: response.data.des,
+			message: response.data.des || response.data.message,
 			status: 400,
 		})
 	}
 
 	let responseDecrypt = isJson(response.data.data)
-	if (headers._id && (responseDecrypt.code == '108' || responseDecrypt.code == 'EXP' || responseDecrypt.code == 'KICKOUT')) {
+	if (
+		headers._id &&
+		(responseDecrypt.code == '108' || responseDecrypt.code == 'EXP' || responseDecrypt.code == 'KICKOUT' || responseDecrypt.code == 'Unauthorized')
+	) {
 		await Bank.findByIdAndUpdate(headers._id, {
 			newLogin: true,
 		})
 	}
+
 	await saveError(responseDecrypt, url)
 	return { response: responseDecrypt, headers: response.headers }
 }
