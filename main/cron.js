@@ -107,7 +107,7 @@ manager.add('cronBrowseNew', `*/5 * * * * *`, async () => {
 	await cronBrowseNew()
 })
 
-manager.add('cronBrowse', `*/5 * * * * *`, async () => {
+manager.add('cronBrowse', `*/10 * * * * *`, async () => {
 	await cronBrowse()
 })
 manager.add('cronDetails', `*/5 * * * * *`, async () => {
