@@ -8,7 +8,7 @@ const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 
 const Vietcombank = require('../main/vietcombank')
-
+const MBBank = require('../main/mbbank')
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -31,7 +31,7 @@ router
 
 router
 	.route('/:bank/login')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.Login)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, MBBank.Login)
 
 router
 	.route('/:bank/getBalance')
