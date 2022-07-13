@@ -32,17 +32,23 @@ router
 router
 	.route('/:bank/login')
 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, MBBank.Login)
-
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.GET_BALANCE)
-
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, MBBank.GET_BALANCE)
 router
 	.route('/:bank/getTransaction')
-	.get(
-		validateParam(schemas.typeBankSchema, 'bank'),
-		validateBody(schemas.transactionBankSchema),
-		DeckController.checkDate,
-		Vietcombank.GET_TRANSACTION
-	)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, MBBank.GET_TRANSACTION)
+
+// router
+// 	.route('/:bank/getBalance')
+// 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.GET_BALANCE)
+
+// router
+// 	.route('/:bank/getTransaction')
+// 	.get(
+// 		validateParam(schemas.typeBankSchema, 'bank'),
+// 		validateBody(schemas.transactionBankSchema),
+// 		DeckController.checkDate,
+// 		Vietcombank.GET_TRANSACTION
+// 	)
 module.exports = router
