@@ -10,6 +10,7 @@ const { validateBody, validateParam, schemas, validateQuery } = require('../help
 const VietcomBank = require('../main/vietcombank')
 const MBBank = require('../main/mbbank')
 const VietinBank = require('../main/vietinbank')
+const ACB = require('../main/acb')
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -32,18 +33,13 @@ router
 
 router
 	.route('/:bank/login')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietinBank.Login)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, ACB.Login)
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietinBank.GET_BALANCE)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, ACB.GET_BALANCE)
 router
 	.route('/:bank/getTransaction')
-	.get(
-		validateParam(schemas.typeBankSchema, 'bank'),
-		validateBody(schemas.transactionBankSchema),
-		DeckController.checkDate,
-		VietinBank.GET_TRANSACTION
-	)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, ACB.GET_TRANSACTION)
 
 // router
 // 	.route('/:bank/getBalance')
