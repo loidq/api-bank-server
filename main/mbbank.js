@@ -927,35 +927,12 @@ const randomString = (length) => {
 
 const refNo = () => dayjs().format('YYYYMMDDHHmmssSSS').substr(0, 16)
 
-const encryptAES = (body, key) => {
-	let iv = Buffer.alloc(0),
-		cipher = crypto.createCipheriv('aes-256-ecb', key, null)
-	return cipher.update(JSON.stringify(body), 'utf8', 'base64') + cipher.final('base64')
-}
 
-const decryptAES = (body, key) => {
-	let iv = Buffer.alloc(32),
-		cipher = crypto.createDecipheriv('aes-192-ecb', Buffer.from(key, 'base64'), null)
-
-	return cipher.update(body, 'base64', 'utf8') + cipher.final('utf8')
-}
 
 function isObject(obj) {
 	return obj !== undefined && obj !== null && obj.constructor == Object
 }
-const saveError = async (str, url) => {
-	if (!str.result.ok) {
-		let error = new Error({
-			data: str,
-			status: str.result.responseCode,
-		})
-		await error.save()
-		newError({
-			message: str.result.message || 'Có lỗi trong quá trình xử lý',
-			status: 400,
-		})
-	}
-}
+
 
 const isJson = (str) => {
 	if (!str)

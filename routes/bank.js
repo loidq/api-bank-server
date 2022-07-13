@@ -7,8 +7,9 @@ const BankController = require('../controllers/bank')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 
-const Vietcombank = require('../main/vietcombank')
+const VietcomBank = require('../main/vietcombank')
 const MBBank = require('../main/mbbank')
+const VietinBank = require('../main/vietinbank')
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -31,17 +32,22 @@ router
 
 router
 	.route('/:bank/login')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, MBBank.Login)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietinBank.Login)
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, MBBank.GET_BALANCE)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietinBank.GET_BALANCE)
 router
 	.route('/:bank/getTransaction')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, MBBank.GET_TRANSACTION)
+	.get(
+		validateParam(schemas.typeBankSchema, 'bank'),
+		validateBody(schemas.transactionBankSchema),
+		DeckController.checkDate,
+		VietinBank.GET_TRANSACTION
+	)
 
 // router
 // 	.route('/:bank/getBalance')
-// 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, Vietcombank.GET_BALANCE)
+// 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietcomBank.GET_BALANCE)
 
 // router
 // 	.route('/:bank/getTransaction')
@@ -49,6 +55,6 @@ router
 // 		validateParam(schemas.typeBankSchema, 'bank'),
 // 		validateBody(schemas.transactionBankSchema),
 // 		DeckController.checkDate,
-// 		Vietcombank.GET_TRANSACTION
+// 		VietcomBank.GET_TRANSACTION
 // 	)
 module.exports = router
