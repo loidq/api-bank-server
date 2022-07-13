@@ -92,8 +92,10 @@ const listDeck = async (req, res, next) => {
 
 const checkDate = async (req, res, next) => {
 	const { token } = req.value.body
+
 	let bank = await Bank.findOne({
 		token,
+		bank: req.value.params.bank,
 	})
 	if (!bank)
 		newError({
