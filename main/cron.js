@@ -1,5 +1,6 @@
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
+const Proxy = require('../models/Proxy')
 const Transaction = require('../models/Transaction')
 const { browse, details, SOF_LIST_MANAGER_MSG } = require('./momo')
 const axios = require('axios')
@@ -154,8 +155,26 @@ manager.add('cronBalance', `*/10 * * * * *`, async () => {
 	)
 })
 
+manager.add('cronPorxy', `*/30 * * * * *`, async () => {
+	let { data: response, status } = await axios.get(
+		'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
+		{
+			timeout: 3000,
+			validateStatus: () => true,
+		}
+	)
+	if (status != 200 || !response.data || !response.data.http_ipv4) return
+	const ipPort = response.data.http_ipv4.split(':')
+	await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
+		host: ipPort[0],
+		port: ipPort[1],
+		auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
+	})
+})
+
 console.log('Start Cron')
 // manager.start('cronBrowseNew')
 // manager.start('cronBrowse')
 // manager.start('cronDetails')
 // manager.start('cronBalance')
+manager.start('cronPorxy')
