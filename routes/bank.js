@@ -11,6 +11,8 @@ const VietcomBank = require('../main/vietcombank')
 const MBBank = require('../main/mbbank')
 const VietinBank = require('../main/vietinbank')
 const ACB = require('../main/acb')
+const TPBank = require('../main/tpbank')
+
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -33,10 +35,10 @@ router
 
 router
 	.route('/:bank/login')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, ACB.Login)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, TPBank.Login)
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, ACB.GET_BALANCE)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietcomBank.GET_BALANCE)
 router
 	.route('/:bank/getTransaction')
 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, ACB.GET_TRANSACTION)

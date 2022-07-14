@@ -91,6 +91,7 @@ const postAxios = async (url, data, headers) => {
 		validateStatus: () => true,
 		timeout: 5000,
 	})
+	console.log(response.status, response.data)
 	if (response.status != 200 || response.data.code != '00') {
 		let error = new Error({
 			url,

@@ -6,6 +6,7 @@ const dayjs = require('dayjs')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
+const HttpsProxyAgent = require('https-proxy-agent')
 const config = {
 	appVer: process.env.appVer,
 	appCode: process.env.appCode,
@@ -897,7 +898,10 @@ const browse = async (bank) => {
 				item.errorCode == 0 &&
 				item.lastUpdate <= toDate &&
 				item.lastUpdate >= fromDate &&
-				(item.serviceId == 'transfer_p2p_globalsearch' || item.serviceId == 'transfer_via_chat' || item.serviceId == 'transfer_p2p')
+				(item.serviceId == 'transfer_p2p_globalsearch' ||
+					item.serviceId == 'transfer_via_link_w2w' ||
+					item.serviceId == 'transfer_via_chat' ||
+					item.serviceId == 'transfer_p2p')
 			) {
 				let check = await Transaction.findOne({
 					banks: bank._id,

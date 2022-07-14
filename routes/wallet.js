@@ -56,4 +56,5 @@ router
 router
 	.route('/:bank/getTransaction')
 	.get(validateParam(schemas.typeWalletSchema, 'bank'), validateBody(schemas.tokenSchema), DeckController.checkDate, WalletController.GET_TRANSACTION)
+
 module.exports = router
