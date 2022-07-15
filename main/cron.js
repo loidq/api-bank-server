@@ -83,6 +83,7 @@ const cronDetails = async () => {
 	let data = await Transaction.find(
 		{
 			status: false,
+			bank: 'momo',
 		},
 		{
 			transId: 1,

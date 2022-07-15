@@ -906,9 +906,11 @@ const browse = async (bank) => {
 				let check = await Transaction.findOne({
 					banks: bank._id,
 					transId: item.transId,
+					bank: 'momo',
 				})
 				if (!check) {
 					let transaction = new Transaction({
+						bank: 'momo',
 						owner: bank.owner,
 						banks: bank._id,
 						io: item.io,
