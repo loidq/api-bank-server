@@ -38,10 +38,10 @@ router
 	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, TPBank.Login)
 router
 	.route('/:bank/getBalance')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, VietcomBank.GET_BALANCE)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.blanceBankSchema), DeckController.checkDate, TPBank.GET_BALANCE)
 router
 	.route('/:bank/getTransaction')
-	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, ACB.GET_TRANSACTION)
+	.get(validateParam(schemas.typeBankSchema, 'bank'), validateBody(schemas.transactionBankSchema), DeckController.checkDate, TPBank.GET_TRANSACTION)
 
 // router
 // 	.route('/:bank/getBalance')
