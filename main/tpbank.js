@@ -59,7 +59,7 @@ const saveError = async (str, url) => {
 const isJson = (str) => {
 	if (!str)
 		newError({
-			message: 'Server VietinBank đang lỗi dữ liệu, vui lòng thử lại sau.',
+			message: 'Server TPBank đang lỗi dữ liệu, vui lòng thử lại sau.',
 			status: 400,
 		})
 
