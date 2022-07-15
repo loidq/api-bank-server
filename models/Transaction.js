@@ -3,6 +3,11 @@ const Schema = mongoose.Schema
 
 const TransactionSchema = new Schema(
 	{
+		bank: {
+			type: String,
+			enum: ['momo', 'zalopay'],
+			lowercase: true,
+		},
 		io: {
 			type: Number,
 		},
