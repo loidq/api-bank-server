@@ -141,7 +141,7 @@ const schemas = {
 			.required(),
 	}),
 	typeBankSchema: Joi.object().keys({
-		param: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb', 'momo').required(),
+		param: Joi.string().valid('vcb', 'mbb', 'tpb', 'acb', 'tcb', 'vtb', 'momo', 'zalopay').required(),
 	}),
 	typeWalletSchema: Joi.object().keys({
 		param: Joi.string().valid('momo', 'zalopay').required(),
@@ -202,7 +202,7 @@ const schemas = {
 				'any.required': `Thiếu email gửi lên`,
 			}),
 		otp: Joi.string()
-			.regex(/^[0-9]{4}$/)
+			.regex(/^[0-9]{6}$/)
 			.required(),
 		password: Joi.string()
 			.regex(/^[0-9]{6}$/)

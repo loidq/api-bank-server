@@ -9,7 +9,7 @@ const createImei = async (req, res, next) => {
 	let { bank } = req.value.params
 	let { phone } = req.value.body
 
-	if (await Bank.findOne({ bank, phone }))
+	if (await Bank.findOne({ bank, phone, status: { $ne: 99 } }))
 		newError({
 			status: 400,
 			message: 'Tài khoản này đã tồn tại trong hệ thống.',
@@ -18,7 +18,7 @@ const createImei = async (req, res, next) => {
 	next()
 }
 
-const SEND_OTP_MOMO = async (req, res, next) => {
+const SEND_OTP = async (req, res, next) => {
 	const deck = req.deck
 	const { _id } = req.user
 	let { imei } = req.bank
@@ -41,7 +41,7 @@ const SEND_OTP_MOMO = async (req, res, next) => {
 	})
 }
 
-const CONFIRM_OTP_MOMO = async (req, res, next) => {
+const CONFIRM_OTP = async (req, res, next) => {
 	return res.status(200).json({
 		success: true,
 		message: 'Thêm tài khoản thành công.',
@@ -127,4 +127,4 @@ const GET_TRANSACTION = async (req, res, next) => {
 	return res.status(200).json({ success: true, data, total })
 }
 
-module.exports = { createImei, SEND_OTP_MOMO, CONFIRM_OTP_MOMO, CHECK_MONEY, GET_BALANCE, GET_TRANSACTION }
+module.exports = { createImei, SEND_OTP, CONFIRM_OTP, CHECK_MONEY, GET_BALANCE, GET_TRANSACTION }
