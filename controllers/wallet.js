@@ -91,7 +91,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 				banks: _id,
 				status: true,
 			},
-			{ io: 1, transId: 1, partnerId: 1, serviceId: 1, partnerName: 1, amount: 1, postBalance: 1, time: 1, comment: 1, _id: 0, info: 1 }
+			{ io: 1, transId: 1, partnerId: 1, partnerName: 1, amount: 1, postBalance: 1, time: 1, comment: 1, _id: 0, info: 1 }
 		)
 			.limit(limit)
 			.skip(skip)
