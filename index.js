@@ -4,7 +4,7 @@ const cors = require('cors')
 const express = require('express')
 const logger = require('morgan')
 const mongoClient = require('mongoose')
-require('./main/cron')
+require('./main/queue')
 mongoClient
 	.connect(process.env.MONGO_URL, {
 		useNewUrlParser: true,
