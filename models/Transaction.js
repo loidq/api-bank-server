@@ -17,6 +17,9 @@ const TransactionSchema = new Schema(
 		transId: {
 			type: Number,
 		},
+		info: {
+			type: Object,
+		},
 		partnerId: {
 			type: String,
 		},

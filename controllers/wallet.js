@@ -83,25 +83,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 
 	let page = req.query.page * 1 || 1
 	let limit = req.query.limit * 1 || 5
-
 	let skip = limit * (page - 1)
-	// const data = await Transaction.find(
-	// 	{
-	// 		banks: _id,
-	// 		status: true,
-	// 	},
-	// 	{ _id: 0, banks: 0, owner: 0, createdAt: 0, updatedAt: 0, __v: 0, status: 0, serviceId: 0 }
-	// )
-	// 	.limit(limit)
-	// 	.skip(skip)
-	// 	.sort({
-	// 		time: 1,
-	// 	})
-
-	// let total = await Transaction.countDocuments({
-	// 	banks: _id,
-	// 	status: true,
-	// })
 
 	const result = await Promise.allSettled([
 		Transaction.find(
@@ -109,7 +91,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 				banks: _id,
 				status: true,
 			},
-			{ io: 1, transId: 1, partnerId: 1, serviceId: 1, partnerName: 1, amount: 1, postBalance: 1, time: 1, comment: 1, _id: 0 }
+			{ io: 1, transId: 1, partnerId: 1, serviceId: 1, partnerName: 1, amount: 1, postBalance: 1, time: 1, comment: 1, _id: 0, info: 1 }
 		)
 			.limit(limit)
 			.skip(skip)

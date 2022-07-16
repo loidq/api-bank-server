@@ -56,7 +56,8 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 		await error.save()
 	}
 	let responseData = isJson(response.data)
-	if (headers._id && (response.data.error.code == 16 || response.data.error.error == 'Unauthenticated')) {
+
+	if (headers._id && responseData.error && (responseData.error.code == 16 || responseData.error.error == 'Unauthenticated')) {
 		await Bank.findByIdAndUpdate(headers._id, {
 			status: 3,
 		})
@@ -217,7 +218,12 @@ const browse = async (bank, page_token = '') => {
 	if (!data.transactions) return
 	let transactions = data.transactions
 	transactions.map(async (item) => {
-		if (item.category_id == 5 && item.trans_time <= toDate && item.trans_time >= fromDate && item.status_info.status == 1) {
+		if (
+			(item.category_id == 5 || item.category_id == 2) &&
+			item.trans_time <= toDate &&
+			item.trans_time >= fromDate &&
+			item.status_info.status == 1
+		) {
 			let check = await Transaction.findOne({
 				bank: 'zalopay',
 				banks: bank._id,
@@ -230,8 +236,6 @@ const browse = async (bank, page_token = '') => {
 					io: item.sign,
 					serviceId: item.system_type,
 					transId: item.trans_id,
-					// partnerId: item.io == -1 ? item.targetId : item.sourceId,
-					// partnerName: item.io == -1 ? item.targetName : item.sourceName,
 					amount: item.trans_amount,
 					time: item.trans_time,
 				})
@@ -250,20 +254,12 @@ const details = async (bank) => {
 		'x-device-id': bank.banks.imei,
 		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
-
 	if (!response.transaction) return
 	let data = response.transaction
 	let comment = data.description
-	let partnerId = ''
-	let partnerName = ''
-	data.template_info.custom_fields.map((item) => {
-		if (item.name == 'Người nhận') partnerName = item.value
-		else if (item.name == 'Số điện thoại') partnerId = item.value
-	})
 	await Transaction.findByIdAndUpdate(bank._id, {
 		status: true,
-		partnerId,
-		partnerName,
+		info: data.template_info.custom_fields,
 		comment,
 		postBalance: data.balance_snapshot,
 	})
