@@ -156,24 +156,31 @@ manager.add('cronBalance', `*/10 * * * * *`, async () => {
 	)
 })
 
-manager.add('cronPorxy', `*/15 * * * * *`, async () => {
-	try {
-		let { data: response, status } = await axios.get(
-			'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
-			{
-				timeout: 3000,
-				validateStatus: () => true,
-			}
-		)
-		if (status != 200 || !response.data || !response.data.http_ipv4) return
-		const ipPort = response.data.http_ipv4.split(':')
-		await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
-			host: ipPort[0],
-			port: ipPort[1],
-			auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
-		})
-	} catch (e) {}
-})
+manager.add(
+	'cronPorxy',
+	`*/15 * * * * *`,
+	async () => {
+		try {
+			let { data: response, status } = await axios.get(
+				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
+				{
+					timeout: 3000,
+					validateStatus: () => true,
+				}
+			)
+			if (status != 200 || !response.data || !response.data.http_ipv4) return
+			const ipPort = response.data.http_ipv4.split(':')
+			await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
+				host: ipPort[0],
+				port: ipPort[1],
+				auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
+			})
+		} catch (e) {}
+	},
+	{
+		start: true,
+	}
+)
 
 console.log('Start Cron')
 // manager.start('cronBrowseNew')
