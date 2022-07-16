@@ -2,8 +2,10 @@ const Bank = require('../models/Bank')
 const axios = require('axios')
 const crypto = require('crypto')
 const Error = require('../models/Error')
+const dayjs = require('dayjs')
 const { uuidv4, sha256, newError } = require('../helpers/routerHelpers')
 const Transaction = require('../models/Transaction')
+//const { queueBrowseZaloPay } = require('./queue')
 const config = {
 	publicKey:
 		'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5x9DdnbbJxnMwbwFrRUs\nmKyPbR0/bCTavHnoWoqgvnyjcZM+aOXEkfZE+78oBn0A3p2T7aBgaKTczuq09xMj\n8qF6dlMT+70/DdF5/7V03xfglmHab+7QBsIf5IamEfy/c3U4W2znDamiEWKpa2Xt\nqfknFUX54Z0GiI6LuNV1LAOzxUOsycRBZbhvvG29DjWFeINZjD52I1rB7NMB+yqC\nhJWc6AVLQ/+aNSGb3zgnPsaA8K9M4cWSiVFOnQqgrKmtcSZirUdiErR475Fmi9U6\nn2iu/0Ytf3E+FBDJc9ZaEqYvHGGAfXJsZdg3YzFrS1j9G0QQTsSdUgFpWcZrhSpA\ngwIDAQAB\n-----END PUBLIC KEY-----',
@@ -80,6 +82,7 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 
 const postAxios2 = async (url, headers) => {
 	let response = await axios.get(url, { headers, validateStatus: () => true, timeout: 2000 })
+
 	if (response.status != 200 || response.data.error) return {}
 	return response.data.data
 }
@@ -204,24 +207,25 @@ const GET_BALANCE = async (req, res, next) => {
 	next()
 }
 
-const browse = async (bank, page_token = '') => {
-	let { jwt_token, imei } = bank
-	let startDate = dayjs(new Date().setDate(1)).hour(0).minute(0).second(0).millisecond(0)
-	let endDate = dayjs(new Date())
-	let fromDate = bank.newLogin ? startDate : dayjs(new Date().setHours(new Date().getHours() - 1))
-	let toDate = endDate
+const browse = async (bank) => {
+	let { jwt_token } = bank
+	if (!bank.page_token) bank.page_token = ''
+	let startDate = dayjs(new Date().setDate(1)).hour(0).minute(0).second(0).millisecond(0).valueOf()
+	let endDate = dayjs(new Date()).valueOf()
+	let fromDate = bank.newLogin ? startDate : dayjs(new Date().setHours(new Date().getHours() - 1)).valueOf()
+	let toDate = endDate.valueOf()
 
-	let data = await postAxios2(`https://sapi.zalopay.vn/v2/history/transactions?page_size=20&page_token=${page_token}`, {
-		'x-device-id': imei,
+	let data = await postAxios2(`https://sapi.zalopay.vn/v2/history/transactions?page_size=20&page_token=${bank.page_token}`, {
 		Authorization: `Bearer ${jwt_token}`,
 	})
+
 	if (!data.transactions) return
 	let transactions = data.transactions
 	transactions.map(async (item) => {
 		if (
 			(item.category_id == 5 || item.category_id == 2) &&
-			item.trans_time <= toDate &&
-			item.trans_time >= fromDate &&
+			dayjs(item.trans_time).valueOf() <= toDate &&
+			dayjs(item.trans_time).valueOf() >= fromDate &&
 			item.status_info.status == 1
 		) {
 			let check = await Transaction.findOne({
@@ -231,6 +235,7 @@ const browse = async (bank, page_token = '') => {
 			})
 			if (!check) {
 				let transaction = new Transaction({
+					bank: 'zalopay',
 					owner: bank.owner,
 					banks: bank._id,
 					io: item.sign,
@@ -243,15 +248,22 @@ const browse = async (bank, page_token = '') => {
 			}
 		}
 	})
-
-	if (Boolean(data.next_page_token) && transactions.pop().trans_time >= fromDate) {
-		console.log('next token')
-	}
+	if (Boolean(data.next_page_token) && dayjs(transactions.pop().trans_time).valueOf() >= fromDate) {
+		bank.page_token = data.next_page_token
+		await queueBrowseZaloPay.add(bank, {
+			delay: 500,
+			removeOnComplete: true,
+			removeOnFail: true,
+			timeout: 3000,
+		})
+	} else if (bank.newLogin)
+		await Bank.findByIdAndUpdate(bank._id, {
+			newLogin: false,
+		})
 }
 
 const details = async (bank) => {
 	let response = await postAxios2(`https://sapi.zalopay.vn/v2/history/transactions/${bank.transId}?type=${bank.serviceId}`, {
-		'x-device-id': bank.banks.imei,
 		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
 	if (!response.transaction) return
@@ -271,6 +283,8 @@ module.exports = {
 	LOGIN,
 	CONFIRM_OTP_ZALOPAY,
 	GET_SALT,
-	browse,
+	postAxios2,
 	GET_BALANCE,
+	browse,
+	details,
 }

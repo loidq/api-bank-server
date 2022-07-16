@@ -892,7 +892,7 @@ const browse = async (bank) => {
 	if (response.resultCode != 0) return
 	let transactions = response.momoMsg
 
-	Promise.allSettled(
+	await Promise.allSettled(
 		transactions.map(async (item) => {
 			if (
 				item.errorCode == 0 &&
@@ -927,6 +927,10 @@ const browse = async (bank) => {
 			}
 		})
 	)
+	if (bank.newLogin)
+		await Bank.findByIdAndUpdate(bank._id, {
+			newLogin: false,
+		})
 }
 
 const details = async (bank) => {
