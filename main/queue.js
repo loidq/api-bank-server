@@ -45,7 +45,8 @@ const cronBrowseMomo = async () => {
 			delay: 500,
 			removeOnComplete: true,
 			removeOnFail: true,
-			timeout: 5000,
+			attempts: 1,
+			timeout: 4000,
 		})
 	)
 	await Promise.allSettled(promises)
@@ -77,6 +78,7 @@ const cronDetailsMomo = async () => {
 			delay: 500,
 			removeOnComplete: true,
 			removeOnFail: true,
+			attempts: 1,
 			timeout: 3000,
 		})
 	)
@@ -115,6 +117,7 @@ const cronBrowseZaloPay = async () => {
 			delay: 500,
 			removeOnComplete: true,
 			removeOnFail: true,
+			attempts: 1,
 			timeout: 3000,
 		})
 	)
@@ -148,6 +151,7 @@ const cronDetailsZaloPay = async () => {
 			delay: 500,
 			removeOnComplete: true,
 			removeOnFail: true,
+			attempts: 1,
 			timeout: 2000,
 		})
 	)
@@ -266,3 +270,51 @@ queueDetailsZaloPay.process(5, (job, done) => {
 	ZaloPay.details(job.data)
 	done()
 })
+
+const axios = require('axios')
+manager.add(
+	'cronBalance',
+	`*/30 * * * * *`,
+	async () => {
+		let data = await Deck.find(
+			{
+				type: 'momo',
+				expired: {
+					$gt: new Date(),
+				},
+				banks: {
+					$ne: null,
+				},
+			},
+			{
+				_id: 0,
+				banks: 1,
+			}
+		).populate({
+			path: 'banks',
+			match: {
+				status: 1,
+				bank: 'momo',
+			},
+			select: {
+				token: 1,
+			},
+		})
+		data = data.filter((item) => item.banks != null)
+
+		Promise.allSettled(
+			data.map((item) =>
+				axios.get('http://localhost:3000/wallet/momo/getBalance', {
+					data: {
+						token: item.banks.token,
+					},
+					timeout: 2000,
+					validateStatus: () => true,
+				})
+			)
+		)
+	},
+	{
+		start: true,
+	}
+)
