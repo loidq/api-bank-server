@@ -8,51 +8,73 @@ const ZaloPayController = require('../main/zalopay')
 const WalletController = require('../controllers/wallet')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
+const queue = require('express-queue')
 
-router
-	.route('/tranfer/:bank')
-	.post(
-		validateParam(schemas.typeWalletSchema, 'bank'),
-		validateBody(schemas.tranferData),
-		DeckController.checkDate,
-		MomoController.SOF_LIST_MANAGER_MSG,
-		WalletController.CHECK_MONEY,
-		MomoController.CHECK_USER_PRIVATE,
-		MomoController.M2MU_INIT,
-		MomoController.M2MU_CONFIRM
-	)
-router
-	.route('/:bank/getOTP')
-	.post(
-		passport.authenticate('jwt', { session: false }),
-		validateParam(schemas.typeWalletSchema, 'bank'),
-		validateBody(schemas.getOTPWallet),
-		DeckController.checkExpired,
-		WalletController.createImei,
-		MomoController.CHECK_USER_BE_MSG,
-		MomoController.SEND_OTP_MSG,
-		WalletController.SEND_OTP
-	)
-router
-	.route('/:bank/confirmOTP')
-	.post(
-		passport.authenticate('jwt', { session: false }),
-		validateParam(schemas.typeWalletSchema, 'bank'),
-		validateBody(schemas.confirmOTPWallet),
-		WalletController.createImei,
-		MomoController.REG_DEVICE_MSG,
-		MomoController.USER_LOGIN_MSG,
-		WalletController.CONFIRM_OTP
-	)
-// router
-// 	.route('/:bank/getBalance')
-// 	.get(
-// 		validateParam(schemas.typeWalletSchema, 'bank'),
-// 		validateBody(schemas.tokenSchema),
-// 		DeckController.checkDate,
-// 		MomoController.SOF_LIST_MANAGER_MSG,
-// 		WalletController.GET_BALANCE
-// 	)
+router.route('/tranfer/:bank').post(
+	// queue({
+	// 	activeLimit: 2,
+	// 	queuedLimit: -1,
+	// 	rejectHandler: (req, res) => {
+	// 		res.status(503).json({
+	// 			success: false,
+	// 			message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+	// 		})
+	// 	},
+	// }),
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateBody(schemas.tranferData),
+	DeckController.checkDate,
+	MomoController.SOF_LIST_MANAGER_MSG,
+	WalletController.CHECK_MONEY,
+	MomoController.CHECK_USER_PRIVATE,
+	MomoController.M2MU_INIT,
+	MomoController.M2MU_CONFIRM
+)
+router.route('/:bank/getOTP').post(
+	passport.authenticate('jwt', { session: false }),
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateBody(schemas.getOTPWallet),
+	DeckController.checkExpired,
+	WalletController.createImei,
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') return MomoController.CHECK_USER_BE_MSG(req, res, next)
+		else return ZaloPayController.checkPhoneNumber(req, res, next)
+	},
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') return MomoController.SEND_OTP_MSG(req, res, next)
+		else return ZaloPayController.SEND_OTP_ZALOPAY(req, res, next)
+	},
+	WalletController.SEND_OTP
+)
+router.route('/:bank/confirmOTP').post(
+	passport.authenticate('jwt', { session: false }),
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateBody(schemas.confirmOTPWallet),
+	WalletController.createImei,
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') return MomoController.REG_DEVICE_MSG(req, res, next)
+		else return ZaloPayController.CONFIRM_OTP_ZALOPAY(req, res, next)
+	},
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') return MomoController.USER_LOGIN_MSG(req, res, next)
+		else return ZaloPayController.GET_SALT(req, res, next)
+	},
+	(req, res, next) => {
+		if (req.value.params.bank == 'zalopay') return ZaloPayController.LOGIN(req, res, next)
+		else next()
+	},
+	WalletController.CONFIRM_OTP
+)
+router.route('/:bank/getBalance').get(
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateBody(schemas.tokenSchema),
+	DeckController.checkDate,
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') return MomoController.SOF_LIST_MANAGER_MSG(req, res, next)
+		else return ZaloPayController.GET_BALANCE(req, res, next)
+	},
+	WalletController.GET_BALANCE
+)
 
 // router
 // 	.route('/:bank/getOTP')
@@ -78,15 +100,15 @@ router
 // 		ZaloPayController.LOGIN,
 // 		WalletController.CONFIRM_OTP
 // 	)
-router
-	.route('/:bank/getBalance')
-	.get(
-		validateParam(schemas.typeWalletSchema, 'bank'),
-		validateBody(schemas.tokenSchema),
-		DeckController.checkDate,
-		ZaloPayController.GET_BALANCE,
-		WalletController.GET_BALANCE
-	)
+// router
+// 	.route('/:bank/getBalance')
+// 	.get(
+// 		validateParam(schemas.typeWalletSchema, 'bank'),
+// 		validateBody(schemas.tokenSchema),
+// 		DeckController.checkDate,
+// 		ZaloPayController.GET_BALANCE,
+// 		WalletController.GET_BALANCE
+// 	)
 
 router
 	.route('/:bank/getTransaction')
