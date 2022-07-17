@@ -144,15 +144,51 @@ const checkExpired = async (req, res, next) => {
 	const { bank: type } = req.value.params
 
 	const { _id } = req.user
+	let check = null
 
-	let check = await Deck.findOne({
-		expired: {
-			$gt: new Date(),
-		},
-		banks: null,
-		owner: _id,
-		type,
-	})
+	if (type == 'momo' || type == 'zalopay') {
+		let check1 = await Bank.findOne({
+			owner: _id,
+			bank: type,
+			phone: req.value.body.phone,
+			status: { $in: [3, 99] },
+		}).populate({
+			path: 'decks',
+			match: {
+				expired: {
+					$gt: new Date(),
+				},
+				owner: _id,
+			},
+		})
+
+		check =
+			Boolean(check1) && check1.decks
+				? {
+						_id: check1.decks._id,
+						type: check1.decks.type,
+						expired: check1.decks.expired,
+						owner: check1.decks.owner,
+						banks: check1.decks.banks,
+						imei: check1.imei,
+				  }
+				: await Deck.findOne({
+						expired: {
+							$gt: new Date(),
+						},
+						banks: null,
+						owner: _id,
+						type,
+				  })
+	} else
+		check = await Deck.findOne({
+			expired: {
+				$gt: new Date(),
+			},
+			owner: _id,
+			type,
+			banks: null,
+		})
 
 	if (!check)
 		newError({

@@ -4,12 +4,13 @@ const Deck = require('../models/Deck')
 const Transaction = require('../models/Transaction')
 const createImei = async (req, res, next) => {
 	if (!req.bank) req.bank = {}
-	if (!req.bank.imei) req.bank.imei = uuidv4()
+
+	if (!req.bank.imei) req.bank.imei = (req.deck && req.deck.imei) || uuidv4()
 
 	let { bank } = req.value.params
 	let { phone } = req.value.body
 
-	if (await Bank.findOne({ bank, phone, status: { $ne: 99 } }))
+	if (await Bank.findOne({ bank, phone, status: { $nin: [99, 3] } }))
 		newError({
 			status: 400,
 			message: 'Tài khoản này đã tồn tại trong hệ thống.',
@@ -25,9 +26,17 @@ const SEND_OTP = async (req, res, next) => {
 	let { bank } = req.value.params
 	let { phone } = req.value.body
 
-	const newBank = new Bank({ bank, phone, imei, owner: _id, token: uuidv4(), decks: deck._id, status: 99 })
-	await newBank.save()
-	// Add newly created bank to the actual banks
+	let newBank = null
+
+	let check = await Bank.findOne({ phone, bank })
+	if (check)
+		newBank = await Bank.findByIdAndUpdate(check._id, {
+			status: 99,
+		})
+	else {
+		newBank = new Bank({ bank, phone, imei, owner: _id, token: uuidv4(), decks: deck._id, status: 99 })
+		await newBank.save()
+	}
 
 	await Deck.findByIdAndUpdate(deck._id, {
 		banks: newBank._id,
