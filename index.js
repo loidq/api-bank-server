@@ -22,7 +22,6 @@ const bankRoute = require('./routes/bank')
 const deckRoute = require('./routes/deck')
 const walletRoute = require('./routes/wallet')
 app.use(cors())
-
 app.use(logger('dev'))
 
 app.use(bodyParser.json())
@@ -55,6 +54,5 @@ app.use((err, req, res, next) => {
 		},
 	})
 })
-
 const port = process.env.PORT || 3000
 app.listen(port, () => console.log(`Server is listening on port ${port}`)).timeout = 10000

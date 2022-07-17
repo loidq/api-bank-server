@@ -458,6 +458,7 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 			status: 400,
 		})
 	}
+
 	await Bank.findByIdAndUpdate(_id, {
 		balance: response.momoMsg.sofInfo[0].balance,
 	})
@@ -867,6 +868,7 @@ const browse = async (bank) => {
 	let limit = bank.newLogin ? 200 : 20
 	let fromDate = bank.newLogin ? startDate.valueOf() : dayjs(new Date().setHours(new Date().getHours() - 1)).valueOf()
 	let toDate = endDate.valueOf()
+
 	let data = encryptAES(
 		JSON.stringify({
 			requestId: time,
