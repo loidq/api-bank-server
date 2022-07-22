@@ -79,6 +79,7 @@ const schemas = {
 			.regex(/^[0-9a-zA-Z]{24}$/)
 			.required(),
 	}),
+
 	loginSchema: Joi.object().keys({
 		email: Joi.string()
 			.email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } })
@@ -95,13 +96,14 @@ const schemas = {
 		}),
 	}),
 	registerSchema: Joi.object().keys({
+		name: Joi.string().min(2).max(30).required(),
 		phone: Joi.string()
 			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
 				'string.pattern.base': `Số điện thoại không hợp lệ`,
-				'any.required': `Thiếu email gửi lên`,
+				'any.required': `Số điện thoại không được bỏ trống`,
 			}),
 
 		email: Joi.string()
@@ -161,6 +163,45 @@ const schemas = {
 	}),
 	extendSchema: Joi.object().keys({
 		period: Joi.number().min(1).max(6).required(),
+	}),
+	idBodySchema: Joi.object().keys({
+		_id: Joi.string()
+			.regex(/^[0-9a-zA-Z]{24}$/)
+			.required(),
+	}),
+	checkTranferWeb: Joi.object().keys({
+		_id: Joi.string()
+			.regex(/^[0-9a-zA-Z]{24}$/)
+			.required(),
+		numberPhone: Joi.string()
+			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.required()
+			.messages({
+				'string.empty': `Số điện thoại không được bỏ trống`,
+				'string.pattern.base': `Số điện thoại không hợp lệ`,
+				'any.required': `Thiếu email gửi lên`,
+			}),
+	}),
+	tranferDataWeb: Joi.object().keys({
+		_id: Joi.string()
+			.regex(/^[0-9a-zA-Z]{24}$/)
+			.required(),
+		numberPhone: Joi.string()
+			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.required()
+			.messages({
+				'string.empty': `Số điện thoại không được bỏ trống`,
+				'string.pattern.base': `Số điện thoại không hợp lệ`,
+				'any.required': `Thiếu email gửi lên`,
+			}),
+		amount: Joi.number().min(100).max(20000000).required(),
+		comment: Joi.string().empty('').default(null),
+
+		password: Joi.string()
+			.regex(/^[0-9]{6}$/)
+			.required(),
+		otp: Joi.string().regex(/^[0-9]{6}$/),
+		NAME: Joi.string().required(),
 	}),
 	tranferData: Joi.object().keys({
 		token: Joi.string()
