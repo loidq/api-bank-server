@@ -1,9 +1,12 @@
 require('dotenv').config()
 const bodyParser = require('body-parser')
+const helmet = require('helmet')
 const cors = require('cors')
 const express = require('express')
 const logger = require('morgan')
 const mongoClient = require('mongoose')
+const rfs = require('rotating-file-stream')
+const { join } = require('path')
 require('./main/queue')
 mongoClient
 	.connect(process.env.MONGO_URL, {
@@ -13,6 +16,13 @@ mongoClient
 	.then(() => console.log('✅ Connected database from mongodb.'))
 	.catch((error) => console.error(`❌ Connect database is failed with error which is ${error}`))
 
+const isProduction = process.env.NODE_ENV === 'production'
+const port = process.env.PORT || 3000
+const accessLogStream = rfs.createStream('access.log', {
+	interval: '1d', // rotate daily
+	path: join(__dirname, 'log'),
+})
+
 const app = express()
 const authRoute = require('./routes/auth')
 const userRoute = require('./routes/user')
@@ -21,8 +31,14 @@ const rechargeRoute = require('./routes/recharge')
 const bankRoute = require('./routes/bank')
 const deckRoute = require('./routes/deck')
 const walletRoute = require('./routes/wallet')
+
+// adding Helmet to enhance your API's security
+app.use(helmet())
+
 app.use(cors())
-app.use(logger('dev'))
+
+// adding morgan to log HTTP requests
+app.use(isProduction ? logger('combined', { stream: accessLogStream }) : logger('dev'))
 
 app.use(bodyParser.json())
 app.use('/auth', authRoute)
@@ -54,5 +70,5 @@ app.use((err, req, res, next) => {
 		},
 	})
 })
-const port = process.env.PORT || 3000
+
 app.listen(port, () => console.log(`Server is listening on port ${port}`)).timeout = 10000
