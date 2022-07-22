@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs')
 
 const UserSchema = new Schema(
 	{
+		name: {
+			type: String,
+			required: [true, "can't be blank"],
+		},
 		email: {
 			type: String,
 			lowercase: true,
@@ -35,6 +39,14 @@ const UserSchema = new Schema(
 			type: Number,
 			min: 0,
 			default: 0,
+		},
+		telegram: {
+			username: {
+				type: String,
+			},
+			id: {
+				type: String,
+			},
 		},
 		errorPass: {
 			type: Number,
