@@ -91,9 +91,13 @@ const postAxios = async (url, data, headers, proxy = null) => {
 		headers,
 		validateStatus: () => true,
 		httpsAgent: proxy,
-		timeout: 5000,
+		timeout: 6000,
 	})
-
+	if (response.status == 429)
+		newError({
+			message: 'Bạn thực hiện quá nhanh, vui lòng thử lại sau ít phút.',
+			status: 429,
+		})
 	if (response.status != 200) {
 		let error = new Error({
 			url,
@@ -616,6 +620,91 @@ const M2M_VALIDATE_MSG = async (currentAccount, partnerId, message = null) => {
 	return response.momoMsg.message
 }
 
+const M2MU_INIT_WEB = async (req, res, next) => {
+	let ip = await get_ip_address()
+	let { phone, jwt_token } = req.bank
+	if (!req.info) req.info = {}
+	let { numberPhone: partnerId, amount, comment, NAME: partnerName } = req.value.body
+	let time = new Date().getTime()
+	let checkSum = generateCheckSum(req.bank, 'M2MU_INIT', time)
+	let data = encryptAES(
+		JSON.stringify({
+			user: phone,
+			msgType: 'M2MU_INIT',
+			cmdId: time + '000000',
+			lang: 'vi',
+			time,
+			channel: 'APP',
+			appVer: config.appVer,
+			appCode: config.appCode,
+			deviceOS: 'IOS',
+			buildNumber: 0,
+			appId: 'vn.momo.platform',
+			result: true,
+			errorCode: 0,
+			errorDesc: '',
+			momoMsg: {
+				clientTime: time - 221,
+				tranType: 2018,
+				comment,
+				amount,
+				partnerId,
+				partnerName,
+				ref: '',
+				serviceCode: 'transfer_p2p',
+				serviceId: 'transfer_p2p',
+				_class: 'mservice.backend.entity.msg.M2MUInitMsg',
+				tranList: [
+					{
+						partnerName,
+						partnerId,
+						originalAmount: amount,
+						serviceCode: 'transfer_p2p',
+						stickers: '',
+						themeUrl: 'https://cdn.mservice.com.vn/app/img/transfer/theme/Corona_750x260.png',
+						transferSource: '',
+						socialUserId: '',
+						chatId: '',
+						receiverType: 1,
+						_class: 'mservice.backend.entity.msg.M2MUInitMsg',
+						tranType: 2018,
+						comment,
+						moneySource: 1,
+						partnerCode: 'momo',
+						serviceMode: 'transfer_p2p',
+						serviceId: 'transfer_p2p',
+						extras: `{"loanId":0,"appSendChat":false,"loanIds":[],"stickers":"","themeUrl":"https://cdn.mservice.com.vn/app/img/transfer/theme/Corona_750x260.png","vpc_CardType":"SML","vpc_TicketNo":"${ip}","vpc_PaymentGateway":""}`,
+					},
+				],
+				extras: `{"loanId":0,"appSendChat":false,"loanIds":[],"stickers":"","themeUrl":"https://cdn.mservice.com.vn/app/img/transfer/theme/Corona_750x260.png","vpc_CardType":"SML","vpc_TicketNo":"${ip}","vpc_PaymentGateway":""}`,
+				moneySource: 1,
+				defaultMoneySource: 1,
+				partnerCode: 'momo',
+				rowCardId: '',
+				giftId: '',
+				useVoucher: 0,
+				discountCode: null,
+				prepaidIds: '',
+				usePrepaid: 0,
+			},
+			extra: {
+				checkSum,
+			},
+		}),
+		'123456789012345678901234567890aa'
+	)
+	let response = await postAxios('https://owa.momo.vn/api/M2MU_INIT', data, {
+		requestkey: config.requestkey,
+		userid: phone,
+		Authorization: `Bearer ${jwt_token}`,
+	})
+	if (!response.result) newError({ message: response.errorDesc, status: 400 })
+	req.info.ID = response.momoMsg.replyMsgs[0].ID
+	req.info.tranHisMsg = response.momoMsg.replyMsgs[0].tranHisMsg
+
+	next()
+}
+
 const M2MU_INIT = async (req, res, next) => {
 	let ip = await get_ip_address()
 	let { phone, jwt_token } = req.bank
@@ -623,7 +712,7 @@ const M2MU_INIT = async (req, res, next) => {
 	let { numberPhone: partnerId, amount, comment } = req.value.body
 	let time = new Date().getTime()
 	let checkSum = generateCheckSum(req.bank, 'M2MU_INIT', time)
-	let data = await encryptAES(
+	let data = encryptAES(
 		JSON.stringify({
 			user: phone,
 			msgType: 'M2MU_INIT',
@@ -978,4 +1067,5 @@ module.exports = {
 	USER_LOGIN_MSG,
 	browse,
 	details,
+	M2MU_INIT_WEB,
 }
