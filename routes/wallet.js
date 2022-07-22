@@ -9,6 +9,39 @@ const WalletController = require('../controllers/wallet')
 const DeckController = require('../controllers/deck')
 const { validateBody, validateParam, schemas, validateQuery } = require('../helpers/routerHelpers')
 const queue = require('express-queue')
+const SecurityController = require('../controllers/security')
+
+router
+	.route('/:bank/checkTranfer')
+	.post(
+		passport.authenticate('jwt', { session: false }),
+		validateParam(schemas.typeWalletSchema, 'bank'),
+		validateBody(schemas.checkTranferWeb),
+		DeckController.checkDateIdBank,
+		MomoController.CHECK_USER_PRIVATE,
+		WalletController.GET_NAME_TRANFER
+	)
+
+router.route('/:bank/tranfer').post(
+	// queue({
+	// 	activeLimit: 2,
+	// 	queuedLimit: -1,
+	// 	rejectHandler: (req, res) => {
+	// 		res.status(503).json({
+	// 			success: false,
+	// 			message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+	// 		})
+	// 	},
+	// }),
+	passport.authenticate('jwt', { session: false }),
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateBody(schemas.tranferDataWeb),
+	DeckController.checkDateIdBank,
+	SecurityController.verifyOTP,
+	WalletController.CHECK_MONEY,
+	MomoController.M2MU_INIT_WEB,
+	MomoController.M2MU_CONFIRM
+)
 
 router.route('/tranfer/:bank').post(
 	// queue({
@@ -24,7 +57,6 @@ router.route('/tranfer/:bank').post(
 	validateParam(schemas.typeWalletSchema, 'bank'),
 	validateBody(schemas.tranferData),
 	DeckController.checkDate,
-	MomoController.SOF_LIST_MANAGER_MSG,
 	WalletController.CHECK_MONEY,
 	MomoController.CHECK_USER_PRIVATE,
 	MomoController.M2MU_INIT,
