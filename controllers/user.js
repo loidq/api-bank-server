@@ -2,13 +2,15 @@ const { newError } = require('../helpers/routerHelpers')
 const User = require('../models/User')
 
 const getInfo = async (req, res, next) => {
-	const { email, phone, amount, roles, createdAt, is2FA, lastLogin } = req.user
+	const { email, phone, amount, roles, createdAt, is2FA, lastLogin, name, telegram } = req.user
 	return res.status(200).json({
 		success: true,
 		data: {
+			name,
 			email,
 			phone,
 			amount,
+			telegram,
 			roles,
 			is2FA,
 			createdAt,
@@ -29,7 +31,7 @@ const changePassword = async (req, res, next) => {
 	delete newUser.currentPassword
 	newUser.password = await user.isChangePassword(newUser.password)
 	const result = await User.findByIdAndUpdate(user._id, newUser)
-	return res.status(200).json({ success: Boolean(result) })
+	return res.status(200).json({ success: Boolean(result), message: 'Thành công', data: {} })
 }
 
 module.exports = {

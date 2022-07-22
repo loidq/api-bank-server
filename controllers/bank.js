@@ -1,6 +1,7 @@
 const { newError, uuidv4 } = require('../helpers/routerHelpers')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
+const Transaction = require('../models/Transaction')
 const newBank = async (req, res, next) => {
 	const deck = req.deck
 	const { _id } = req.user
@@ -78,7 +79,7 @@ const listBank = async (req, res, next) => {
 			createdAt: 1,
 			token: 1,
 			lastLogin: 1,
-			newLogin:1,
+			newLogin: 1,
 		}
 	).populate({
 		path: 'decks',
@@ -92,9 +93,40 @@ const listBank = async (req, res, next) => {
 	return res.status(200).json({ success: true, data: { list: accounts, total: accounts.length } })
 }
 
+const transactionBank = async (req, res, next) => {
+	const { _id } = req.bank
+
+	let page = req.query.page * 1 || 1
+	let limit = req.query.limit * 1 || 5
+	let skip = limit * (page - 1)
+
+	const result = await Promise.allSettled([
+		Transaction.find(
+			{
+				banks: _id,
+				status: true,
+			},
+			{ io: 1, transId: 1, partnerId: 1, partnerName: 1, amount: 1, postBalance: 1, time: 1, comment: 1, _id: 0, info: 1 }
+		)
+			.limit(limit)
+			.skip(skip)
+			.sort({
+				time: -1,
+			}),
+		Transaction.countDocuments({
+			banks: _id,
+			status: true,
+		}),
+	])
+	const data = result[0].status === 'fulfilled' ? result[0].value : []
+	const total = result[1].status === 'fulfilled' ? result[1].value : 0
+
+	return res.status(200).json({ success: true, data, total })
+}
 module.exports = {
 	deleteBank,
 	newBank,
 	updateBank,
 	listBank,
+	transactionBank,
 }

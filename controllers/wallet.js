@@ -79,6 +79,14 @@ const CHECK_MONEY = async (req, res, next) => {
 	next()
 }
 
+const GET_NAME_TRANFER = async (req, res, next) => {
+	return res.status(200).json({
+		success: true,
+		message: 'Thành công',
+		data: { ...req.info },
+	})
+}
+
 const GET_BALANCE = async (req, res, next) => {
 	return res.status(200).json({
 		success: true,
@@ -118,4 +126,4 @@ const GET_TRANSACTION = async (req, res, next) => {
 	return res.status(200).json({ success: true, data, total })
 }
 
-module.exports = { createImei, SEND_OTP, CONFIRM_OTP, CHECK_MONEY, GET_BALANCE, GET_TRANSACTION }
+module.exports = { createImei, SEND_OTP, CONFIRM_OTP, CHECK_MONEY, GET_BALANCE, GET_TRANSACTION, GET_NAME_TRANFER }

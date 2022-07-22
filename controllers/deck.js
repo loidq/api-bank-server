@@ -140,6 +140,56 @@ const checkDate = async (req, res, next) => {
 	next()
 }
 
+const checkDateIdBank = async (req, res, next) => {
+	const { _id } = req.value.body
+
+	let bank = await Bank.findOne({
+		_id,
+		bank: req.value.params.bank,
+	})
+	if (!bank)
+		newError({
+			status: 400,
+			message: 'Tài khoản không tồn tại trong hệ thống.',
+		})
+	else if (bank.status == 0)
+		newError({
+			status: 400,
+			message: 'Tài khoản đang tạm thời ngưng sử dụng.',
+		})
+	else if (bank.status == 2)
+		newError({
+			status: 400,
+			message: 'Tài khoản đang bị khoá vui lòng inbox admin giải quyết.',
+		})
+	else if (bank.status == 3)
+		newError({
+			status: 400,
+			message: 'Vui lòng đang nhập lại tài khoản.',
+		})
+	else if (bank.status == 99)
+		newError({
+			status: 400,
+			message: 'Tài khoản tạm thời chưa sử dụng được.',
+		})
+
+	let check = await Deck.findOne({
+		expired: {
+			$gt: new Date(),
+		},
+		banks: bank._id,
+		owner: bank.owner,
+	})
+
+	if (!check)
+		newError({
+			status: 400,
+			message: 'Tài khoản đã hết hạn sử dụng, vui lòng gia hạn để tiếp tục sử dụng.',
+		})
+	req.bank = bank
+	next()
+}
+
 const checkExpired = async (req, res, next) => {
 	const { bank: type } = req.value.params
 
@@ -222,4 +272,5 @@ module.exports = {
 	checkExpired,
 	checkDate,
 	listDeck,
+	checkDateIdBank,
 }

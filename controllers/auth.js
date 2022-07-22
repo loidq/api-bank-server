@@ -33,7 +33,7 @@ const login = async (req, res, next) => {
 }
 
 const register = async (req, res, next) => {
-	const { email, phone, password } = req.value.body
+	const { email, phone, password, name } = req.value.body
 
 	const foundUser = await User.findOne({ $or: [{ email }, { phone }] })
 	if (foundUser)
@@ -44,7 +44,7 @@ const register = async (req, res, next) => {
 			},
 		})
 
-	const newUser = new User({ email, phone, password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
+	const newUser = new User({ name, email, phone, password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
 
 	await newUser.save()
 
@@ -55,6 +55,7 @@ const register = async (req, res, next) => {
 	return res.status(200).json({
 		success,
 		message: success ? 'Tạo tài khoản thành công' : 'Tạo tài khoản thất bại, vui lòng thử lại sau.',
+		data: {},
 	})
 }
 
@@ -65,6 +66,7 @@ const refreshsession = async (req, res, next) => {
 
 	return res.status(200).json({
 		success: Boolean(result),
+		data: {},
 	})
 }
 
@@ -75,6 +77,7 @@ const forgetsession = async (req, res, next) => {
 
 	return res.status(200).json({
 		success: Boolean(result),
+		data: {},
 	})
 }
 
