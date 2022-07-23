@@ -23,13 +23,6 @@ const verify2FA = async (req, res, next) => {
 	const { secret2FA, is2FA, _id } = req.user
 	const { otp } = req.value.body
 
-	if (!is2FA) return next()
-
-	if (is2FA && (!otp || `${otp}`.length != 6))
-		newError({
-			message: 'Vui lòng không để trống OTP.',
-			status: 400,
-		})
 	let result = verifyOTPToken(otp, secret2FA)
 	if (result) {
 		await User.findByIdAndUpdate(_id, { is2FA: !is2FA })
