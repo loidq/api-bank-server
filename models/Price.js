@@ -7,8 +7,15 @@ const PriceSchema = new Schema({
 		enum: ['momo', 'vcb', 'acb', 'mbb', 'zalopay', 'tpb', 'vtb', 'tcb'],
 		lowercase: true,
 	},
+	name: {
+		type: String,
+	},
 	amount: {
 		type: Number,
+	},
+	status: {
+		type: Boolean,
+		default: true,
 	},
 })
 

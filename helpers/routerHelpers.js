@@ -137,6 +137,10 @@ const schemas = {
 			'any.required': `Thiếu mật khẩu gửi lên`,
 		}),
 	}),
+	updatePriceSchema: Joi.object().keys({
+		name: Joi.string(),
+		status: Joi.boolean(),
+	}),
 	verifyOTP: Joi.object().keys({
 		otp: Joi.string()
 			.regex(/^[0-9]{6}$/)
@@ -147,6 +151,11 @@ const schemas = {
 	}),
 	typeWalletSchema: Joi.object().keys({
 		param: Joi.string().valid('momo', 'zalopay').required(),
+	}),
+	updateTelegramSchema: Joi.object().keys({
+		username: Joi.string()
+			.regex(/^[0-9a-zA-Z_-]+$/)
+			.required(),
 	}),
 
 	newBankSchema: Joi.object().keys({

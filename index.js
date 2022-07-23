@@ -30,6 +30,7 @@ const securityRoute = require('./routes/security')
 const rechargeRoute = require('./routes/recharge')
 const bankRoute = require('./routes/bank')
 const deckRoute = require('./routes/deck')
+const priceRoute = require('./routes/price')
 const walletRoute = require('./routes/wallet')
 
 // adding Helmet to enhance your API's security
@@ -47,6 +48,7 @@ app.use('/security', securityRoute)
 app.use('/recharge', rechargeRoute)
 app.use('/bank', bankRoute)
 app.use('/deck', deckRoute)
+app.use('/price', priceRoute)
 app.use('/wallet', walletRoute)
 app.get('/', (req, res, next) => {
 	return res.status(201).json({
