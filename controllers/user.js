@@ -34,7 +34,17 @@ const changePassword = async (req, res, next) => {
 	return res.status(200).json({ success: Boolean(result), message: 'Thành công', data: {} })
 }
 
+const updateTelegram = async (req, res, next) => {
+	const user = req.user
+	const { username } = req.value.body
+	await User.findByIdAndUpdate(user._id, {
+		'telegram.username': username,
+	})
+	return res.status(200).json({ success: true, message: 'Thành công', data: {} })
+}
+
 module.exports = {
 	getInfo,
 	changePassword,
+	updateTelegram,
 }

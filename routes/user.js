@@ -12,6 +12,7 @@ router
 	.route('/me')
 	.get(passport.authenticate('jwt', { session: false }), UserController.getInfo)
 	.post(passport.authenticate('jwt', { session: false }), validateBody(schemas.changePasswordSchema), UserController.changePassword)
+	.patch(passport.authenticate('jwt', { session: false }), validateBody(schemas.updateTelegramSchema), UserController.updateTelegram)
 /*
 router
 	.route('/decks')
