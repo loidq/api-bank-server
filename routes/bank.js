@@ -13,6 +13,8 @@ const VietinBank = require('../main/vietinbank')
 const ACB = require('../main/acb')
 const TPBank = require('../main/tpbank')
 
+router.route('/lastTransaction').get(passport.authenticate('jwt', { session: false }), BankController.lastTransactionBank)
+
 router
 	.route('/:bank')
 	.get(passport.authenticate('jwt', { session: false }), validateParam(schemas.typeBankSchema, 'bank'), BankController.listBank)
@@ -32,9 +34,11 @@ router
 		BankController.updateBank
 	)
 	.delete(passport.authenticate('jwt', { session: false }), validateParam(schemas.idSchema, 'bankID'), BankController.deleteBank)
+
 router
 	.route('/:bank/transaction')
 	.get(
+		passport.authenticate('jwt', { session: false }),
 		validateParam(schemas.typeWalletSchema, 'bank'),
 		validateBody(schemas.idBodySchema),
 		DeckController.checkDateIdBank,
