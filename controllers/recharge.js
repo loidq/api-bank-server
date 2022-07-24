@@ -30,6 +30,7 @@ const getSyntax = async (req, res, next) => {
 	}
 	return res.status(200).json({
 		success: true,
+		message: 'Thành công',
 		data: {
 			...infoRecharge,
 			syntax: Syntaxs.syntax,
@@ -38,20 +39,22 @@ const getSyntax = async (req, res, next) => {
 }
 
 const getHistory = async (req, res, next) => {
-	const { _id: userID } = req.user
-	const Histories = await Recharge.find(
+	const { _id } = req.user
+	const histories = await Recharge.find(
 		{
-			owner: userID,
+			owner: _id,
 			status: true,
 		},
 		{ _id: 0, type: 1, amount: 1, syntax: 1, updatedAt: 1 }
-	).limit(5)
+	)
+		.limit(5)
+		.sort({
+			updatedAt: -1,
+		})
 	return res.status(200).json({
 		success: true,
-		data: {
-			list: Histories,
-			total: Histories.length,
-		},
+		message: 'Thành công',
+		data: histories,
 	})
 }
 
