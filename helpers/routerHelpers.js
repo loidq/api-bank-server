@@ -157,7 +157,13 @@ const schemas = {
 			.regex(/^[0-9a-zA-Z_-]+$/)
 			.required(),
 	}),
-
+	newNotificationSchema: Joi.object().keys({
+		title: Joi.string().required(),
+		content: Joi.string().required(),
+	}),
+	notificationOptionalSchema: Joi.object().keys({
+		status: Joi.boolean().required(),
+	}),
 	newBankSchema: Joi.object().keys({
 		username: Joi.string()
 			.regex(/^[0-9a-zA-Z_-]+$/)
