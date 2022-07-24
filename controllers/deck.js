@@ -8,7 +8,7 @@ const { uuidv4 } = require('../helpers/routerHelpers')
 const upgrade = async (req, res, next) => {
 	const { amount, _id } = req.user
 	const { type, period } = req.value.body
-	let { amount: price } = await Price.findOne({ type })
+	let { amount: price, name } = await Price.findOne({ type })
 
 	if (amount < price * period)
 		newError({
@@ -23,6 +23,7 @@ const upgrade = async (req, res, next) => {
 		owner: _id,
 		type,
 		expired,
+		name,
 	})
 	await newDeck.save()
 	return res.status(200).json({
