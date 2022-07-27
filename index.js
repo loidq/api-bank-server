@@ -5,23 +5,37 @@ const cors = require('cors')
 const express = require('express')
 const logger = require('morgan')
 const mongoClient = require('mongoose')
-const rfs = require('rotating-file-stream')
-const { join } = require('path')
+const { inrsetDB } = require('./config/migrate')
+// const rfs = require('rotating-file-stream')
+// const { join } = require('path')
+
+let infoDB = {
+	host: process.env.DB_HOST || 'localhost',
+	port: process.env.DB_PORT || 27017,
+	name: process.env.DB_NAME || 'api-bank-server',
+}
+
+const mongoUrl = `mongodb://${infoDB.host}:${infoDB.port}/${infoDB.name}`
+
 require('./main/queue')
+
 mongoClient
-	.connect(process.env.MONGO_URL, {
+	.connect(mongoUrl, {
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 	})
-	.then(() => console.log('✅ Connected database from mongodb.'))
+	.then(async () => {
+		console.log('✅ Connected database from mongodb.')
+		await inrsetDB()
+	})
 	.catch((error) => console.error(`❌ Connect database is failed with error which is ${error}`))
 
 const isProduction = process.env.NODE_ENV === 'production'
 const port = process.env.PORT || 3000
-const accessLogStream = rfs.createStream('access.log', {
-	interval: '1d', // rotate daily
-	path: join(__dirname, 'log'),
-})
+// const accessLogStream = rfs.createStream('access.log', {
+// 	interval: '1d', // rotate daily
+// 	path: join(__dirname, 'log'),
+// })
 
 const app = express()
 const authRoute = require('./routes/auth')
@@ -40,7 +54,9 @@ app.use(helmet())
 app.use(cors())
 
 // adding morgan to log HTTP requests
-app.use(isProduction ? logger('combined', { stream: accessLogStream }) : logger('dev'))
+// app.use(isProduction ? logger('combined', { stream: accessLogStream }) : logger('dev'))
+
+app.use(logger('dev'))
 
 app.use(bodyParser.json())
 app.use('/auth', authRoute)

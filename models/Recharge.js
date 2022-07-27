@@ -5,6 +5,7 @@ const RechargeSchema = new Schema(
 	{
 		syntax: {
 			type: Number,
+			index: true,
 		},
 		url: {
 			type: String,

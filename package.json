@@ -2,10 +2,10 @@
   "name": "api-bank-server",
   "version": "1.0.0",
   "description": "backend",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js --mode production"
   },
   "author": "Sow",
   "license": "ISC",
@@ -28,6 +28,7 @@
     "express-promise-router": "^4.1.1",
     "express-queue": "^0.0.13",
     "helmet": "^5.1.0",
+    "https-proxy-agent": "^5.0.1",
     "image-to-base64": "^2.2.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.4.0",

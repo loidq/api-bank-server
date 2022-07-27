@@ -142,11 +142,12 @@ const checkDate = async (req, res, next) => {
 }
 
 const checkDateIdBank = async (req, res, next) => {
-	const { _id } = req.value.body
+	const _id = req.value.body ? req.value.body._id : req.value.params.bankId
 
 	let bank = await Bank.findOne({
 		_id,
 		bank: req.value.params.bank,
+		owner: req.user._id,
 	})
 	if (!bank)
 		newError({

@@ -35,15 +35,14 @@ router
 	)
 	.delete(passport.authenticate('jwt', { session: false }), validateParam(schemas.idSchema, 'bankID'), BankController.deleteBank)
 
-router
-	.route('/:bank/transaction')
-	.get(
-		passport.authenticate('jwt', { session: false }),
-		validateParam(schemas.typeWalletSchema, 'bank'),
-		validateBody(schemas.idBodySchema),
-		DeckController.checkDateIdBank,
-		BankController.transactionBank
-	)
+router.route('/:bank/transaction/:bankId').get(
+	passport.authenticate('jwt', { session: false }),
+	validateParam(schemas.typeWalletSchema, 'bank'),
+	validateParam(schemas.idSchema, 'bankId'),
+	// validateBody(schemas.idBodySchema),
+	DeckController.checkDateIdBank,
+	BankController.transactionBank
+)
 
 router
 	.route('/:bank/login')

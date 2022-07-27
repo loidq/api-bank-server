@@ -50,6 +50,7 @@ const BankSchema = new Schema(
 		},
 		token: {
 			type: String,
+			index: true,
 		},
 		balance: {
 			type: Number,

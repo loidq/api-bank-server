@@ -46,8 +46,30 @@ const isJson = (str) => {
 	}
 }
 
+const getJson = async (url, data, headers, proxy, method) => {
+	try {
+		return await axios({ method, url, data, headers, validateStatus: () => true, httpsAgent: proxy, timeout: 4000 })
+	} catch (error) {
+		if (error.code == 'ECONNABORTED')
+			newError({
+				status: 400,
+				message: 'Quá thời gian truy cập, vui lòng thử lại sau',
+			})
+		else if (error.code == 'ECONNREFUSED')
+			newError({
+				status: 400,
+				message: 'Không thể kết nối tới Server ZaloPay.',
+			})
+		else
+			newError({
+				status: 500,
+				message: error.message,
+			})
+	}
+}
+
 const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
-	let response = await axios({ method, url, data, headers, validateStatus: () => true, httpsAgent: proxy, timeout: 5000 })
+	let response = await getJson(url, data, headers, proxy, method)
 
 	if (response.status != 200) {
 		let error = new Error({
@@ -80,10 +102,22 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 	return responseData
 }
 
-const postAxios2 = async (url, headers) => {
-	let response = await axios.get(url, { headers, validateStatus: () => true, timeout: 2000 })
+const getJson2 = async (url, headers) => {
+	try {
+		return await axios.get(url, {
+			headers,
+			validateStatus: () => true,
+			timeout: 3000,
+		})
+	} catch (error) {
+		return null
+	}
+}
 
-	if (response.status != 200 || response.data.error) return {}
+const postAxios2 = async (url, headers) => {
+	let response = await getJson2(url, headers)
+
+	if (!response || response?.status != 200 || response?.data?.error) return null
 	return response.data.data
 }
 
@@ -219,7 +253,7 @@ const browse = async (bank) => {
 		Authorization: `Bearer ${jwt_token}`,
 	})
 
-	if (!data.transactions) return
+	if (!data || !data?.transactions) return
 	let transactions = data.transactions
 	transactions.map(async (item) => {
 		if (
@@ -266,7 +300,7 @@ const details = async (bank) => {
 	let response = await postAxios2(`https://sapi.zalopay.vn/v2/history/transactions/${bank.transId}?type=${bank.serviceId}`, {
 		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
-	if (!response.transaction) return
+	if (!response || !response?.transaction) return
 	let data = response.transaction
 	let comment = data.description
 	await Transaction.findByIdAndUpdate(bank._id, {

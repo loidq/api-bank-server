@@ -23,16 +23,16 @@ router
 	)
 
 router.route('/:bank/tranfer').post(
-	// queue({
-	// 	activeLimit: 2,
-	// 	queuedLimit: -1,
-	// 	rejectHandler: (req, res) => {
-	// 		res.status(503).json({
-	// 			success: false,
-	// 			message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
-	// 		})
-	// 	},
-	// }),
+	queue({
+		activeLimit: 10,
+		queuedLimit: 5,
+		rejectHandler: (req, res) => {
+			res.status(503).json({
+				success: false,
+				message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+			})
+		},
+	}),
 	passport.authenticate('jwt', { session: false }),
 	validateParam(schemas.typeWalletSchema, 'bank'),
 	validateBody(schemas.tranferDataWeb),
@@ -43,17 +43,17 @@ router.route('/:bank/tranfer').post(
 	MomoController.M2MU_CONFIRM
 )
 
-router.route('/tranfer/:bank').post(
-	// queue({
-	// 	activeLimit: 2,
-	// 	queuedLimit: -1,
-	// 	rejectHandler: (req, res) => {
-	// 		res.status(503).json({
-	// 			success: false,
-	// 			message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
-	// 		})
-	// 	},
-	// }),
+router.route('/:bank/sendMoney').post(
+	queue({
+		activeLimit: 10,
+		queuedLimit: 5,
+		rejectHandler: (req, res) => {
+			res.status(503).json({
+				success: false,
+				message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+			})
+		},
+	}),
 	validateParam(schemas.typeWalletSchema, 'bank'),
 	validateBody(schemas.tranferData),
 	DeckController.checkDate,
@@ -101,46 +101,25 @@ router.route('/:bank/getBalance').get(
 	validateParam(schemas.typeWalletSchema, 'bank'),
 	validateBody(schemas.tokenSchema),
 	DeckController.checkDate,
+
 	(req, res, next) => {
 		if (req.value.params.bank == 'momo') return MomoController.SOF_LIST_MANAGER_MSG(req, res, next)
 		else return ZaloPayController.GET_BALANCE(req, res, next)
 	},
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') {
+			if (req.nextName == 'token') return MomoController.GENERATE_TOKEN_AUTH_MSG(req, res, next)
+			else return next()
+		} else next()
+	},
+	(req, res, next) => {
+		if (req.value.params.bank == 'momo') {
+			if (req.nextName == 'login') return MomoController.USER_LOGIN_MSG(req, res, next)
+			else return next()
+		} else next()
+	},
 	WalletController.GET_BALANCE
 )
-
-// router
-// 	.route('/:bank/getOTP')
-// 	.post(
-// 		passport.authenticate('jwt', { session: false }),
-// 		validateParam(schemas.typeWalletSchema, 'bank'),
-// 		validateBody(schemas.getOTPWallet),
-// 		DeckController.checkExpired,
-// 		WalletController.createImei,
-// 		ZaloPayController.checkPhoneNumber,
-// 		ZaloPayController.SEND_OTP_ZALOPAY,
-// 		WalletController.SEND_OTP
-// 	)
-// router
-// 	.route('/:bank/confirmOTP')
-// 	.post(
-// 		passport.authenticate('jwt', { session: false }),
-// 		validateParam(schemas.typeWalletSchema, 'bank'),
-// 		validateBody(schemas.confirmOTPWallet),
-// 		WalletController.createImei,
-// 		ZaloPayController.CONFIRM_OTP_ZALOPAY,
-// 		ZaloPayController.GET_SALT,
-// 		ZaloPayController.LOGIN,
-// 		WalletController.CONFIRM_OTP
-// 	)
-// router
-// 	.route('/:bank/getBalance')
-// 	.get(
-// 		validateParam(schemas.typeWalletSchema, 'bank'),
-// 		validateBody(schemas.tokenSchema),
-// 		DeckController.checkDate,
-// 		ZaloPayController.GET_BALANCE,
-// 		WalletController.GET_BALANCE
-// 	)
 
 router
 	.route('/:bank/getTransaction')

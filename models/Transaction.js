@@ -16,6 +16,7 @@ const TransactionSchema = new Schema(
 		},
 		transId: {
 			type: Number,
+			index: true,
 		},
 		info: {
 			type: Object,
@@ -45,6 +46,7 @@ const TransactionSchema = new Schema(
 		banks: {
 			type: Schema.Types.ObjectId,
 			ref: 'Bank',
+			index: true,
 		},
 		owner: {
 			type: Schema.Types.ObjectId,

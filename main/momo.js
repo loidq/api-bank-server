@@ -6,6 +6,7 @@ const dayjs = require('dayjs')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
+const Proxy = require('../models/Proxy')
 const HttpsProxyAgent = require('https-proxy-agent')
 const config = {
 	appVer: process.env.appVer,
@@ -40,10 +41,11 @@ const generateCheckSum = (data, type, times) => {
 }
 
 const getProxy = async () => {
-	let { host, port } = await Proxy.findById(ID_PROXY)
+	let { host, port, auth } = await Proxy.findById('62d04051bdd86d759ccc4161')
 	let proxy = new HttpsProxyAgent({
 		host,
 		port,
+		auth,
 	})
 	return proxy
 }
@@ -86,50 +88,75 @@ const isJson = async (str) => {
 	}
 }
 
+const postJson = async (url, data, headers, proxy = null) => {
+	try {
+		return await axios.post(url, data, {
+			headers,
+			validateStatus: () => true,
+			httpsAgent: proxy,
+			timeout: 5000,
+		})
+	} catch (error) {
+		console.log('logs ', `${error.code} - ${error.errno} - ${error.message}`)
+
+		if (error.code == 'ECONNABORTED')
+			newError({
+				status: 400,
+				message: 'Quá thời gian truy cập, vui lòng thử lại sau',
+			})
+		else if (error.code == 'ECONNREFUSED')
+			newError({
+				status: 400,
+				message: 'Không thể kết nối tới Server MoMo.',
+			})
+		else
+			newError({
+				status: 500,
+				message: error.message,
+			})
+	}
+}
+
+const postJson2 = async (url, data, headers, proxy = null) => {
+	try {
+		return await axios.post(url, data, {
+			headers,
+			validateStatus: () => true,
+			httpsAgent: proxy,
+			timeout: 3000,
+		})
+	} catch (error) {
+		return null
+	}
+}
+
 const postAxios = async (url, data, headers, proxy = null) => {
-	let response = await axios.post(url, data, {
-		headers,
-		validateStatus: () => true,
-		httpsAgent: proxy,
-		timeout: 6000,
-	})
+	let response = await postJson(url, data, headers, proxy)
+
+	if (response.status == 401 && !response.data) return { errorCode: -83 }
 	if (response.status == 429)
 		newError({
 			message: 'Bạn thực hiện quá nhanh, vui lòng thử lại sau ít phút.',
 			status: 429,
 		})
-	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
-	}
 
 	return isJson(response.data)
 }
 
 const isJson2 = async (str) => {
-	if (!str) return
-	if (isObject(str)) return str
-	else return JSON.parse(decryptAES(str, '123456789012345678901234567890aa'))
+	try {
+		if (!str) return null
+		if (isObject(str)) return str
+		else return JSON.parse(decryptAES(str, '123456789012345678901234567890aa'))
+	} catch {
+		return null
+	}
 }
 
 const postAxios2 = async (url, data, headers, proxy = null) => {
-	let response = await axios.post(url, data, {
-		headers,
-		validateStatus: () => true,
-		httpsAgent: proxy,
-	})
-	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
-	}
+	let response = await postJson2(url, data, headers, proxy)
+
+	if (!response || response?.status != 200 || response?.code == 'ECONNABORTED') return null
 
 	return isJson2(response.data)
 }
@@ -413,14 +440,19 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 			lastLogin: new Date(),
 			balance: response.extra.BALANCE,
 		})
+		console.log('newLogin')
 	}
+	req.nextName = ''
 	next()
 }
 
 const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	let { jwt_token, phone, _id, lastLogin } = req.bank
-
-	if (new Date() - lastLogin > 5300000) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
+	if (new Date() - lastLogin >= 5350000) {
+		req.nextName = 'token'
+		console.log('get New Token')
+		return next()
+	}
 	let time = new Date().getTime(),
 		checkSum = generateCheckSum(req.bank, 'SOF_LIST_MANAGER_MSG', time)
 	let data = encryptAES(
@@ -456,7 +488,10 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	})
 
 	if (!response.result) {
-		if (response.errorCode == -83) await GENERATE_TOKEN_AUTH_MSG(req, res, next)
+		if (response.errorCode == -83) {
+			req.nextName = 'token'
+			return next()
+		}
 		newError({
 			message: response.errorDesc,
 			status: 400,
@@ -467,7 +502,6 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 		balance: response.momoMsg.sofInfo[0].balance,
 	})
 	req.bank.balance = response.momoMsg.sofInfo[0].balance
-
 	next()
 }
 
@@ -855,10 +889,13 @@ const M2MU_CONFIRM = async (req, res, next) => {
 	if (!response.result) newError({ message: response.errorDesc, status: 400 })
 	let check = await Transaction.findOne({
 		transId: response.momoMsg.replyMsgs[0].transId,
+		bank: 'momo',
+		banks: _id,
 	})
 
 	if (!check) {
 		let transaction = new Transaction({
+			bank: 'momo',
 			serviceId: response.momoMsg.replyMsgs[0].tranHisMsg.serviceId,
 			io: -1,
 			time: response.momoMsg.replyMsgs[0].tranHisMsg.finishTime,
@@ -929,19 +966,18 @@ const GENERATE_TOKEN_AUTH_MSG = async (req, res, next) => {
 			checkSum,
 		},
 	})
+
 	let response = await postAxios('https://api.momo.vn/backend/auth-app/public/GENERATE_TOKEN_AUTH_MSG', data, {
 		userid: phone,
 		Authorization: `Bearer ${jwt_token}`,
 	})
 
 	if (!response.result) {
-		await USER_LOGIN_MSG(req, res, next)
-		newError({
-			message: response.errorDesc || response.description || `Lấy Authorization thất bại.`,
-			status: 400,
-		})
+		req.nextName = 'login'
+
+		return next()
 	} else {
-		req.jwt_token = response.extra.AUTH_TOKEN
+		req.bank.jwt_token = response.extra.AUTH_TOKEN
 		await Bank.findByIdAndUpdate(_id, {
 			jwt_token: response.extra.AUTH_TOKEN,
 			lastLogin: new Date(),
@@ -980,7 +1016,7 @@ const browse = async (bank) => {
 		requestkey: config.requestkey,
 		Authorization: `Bearer ${bank.jwt_token}`,
 	})
-	if (response.resultCode != 0) return
+	if (!response || response?.resultCode != 0) return
 	let transactions = response.momoMsg
 
 	await Promise.allSettled(
@@ -994,26 +1030,36 @@ const browse = async (bank) => {
 					item.serviceId == 'transfer_via_chat' ||
 					item.serviceId == 'transfer_p2p')
 			) {
-				let check = await Transaction.findOne({
-					banks: bank._id,
-					transId: item.transId,
-					bank: 'momo',
-				})
-				if (!check) {
-					let transaction = new Transaction({
-						bank: 'momo',
-						owner: bank.owner,
+				const session = await Transaction.startSession()
+				session.startTransaction()
+				try {
+					let check = await Transaction.findOne({
 						banks: bank._id,
-						io: item.io,
-						serviceId: item.serviceId,
 						transId: item.transId,
-						partnerId: item.io == -1 ? item.targetId : item.sourceId,
-						partnerName: item.io == -1 ? item.targetName : item.sourceName,
-						amount: item.totalOriginalAmount,
-						postBalance: item.postBalance,
-						time: item.lastUpdate,
+						bank: 'momo',
 					})
-					await transaction.save()
+					if (!check) {
+						let transaction = new Transaction({
+							bank: 'momo',
+							owner: bank.owner,
+							banks: bank._id,
+							io: item.io,
+							serviceId: item.serviceId,
+							transId: item.transId,
+							partnerId: item.io == -1 ? item.targetId : item.sourceId,
+							partnerName: item.io == -1 ? item.targetName : item.sourceName,
+							amount: item.totalOriginalAmount,
+							postBalance: item.postBalance,
+							time: item.lastUpdate,
+						})
+						await transaction.save()
+					}
+					await session.commitTransaction()
+					session.endSession()
+				} catch (error) {
+					console.log('error momo Transaction', error)
+					await session.abortTransaction()
+					session.endSession()
 				}
 			}
 		})
@@ -1046,7 +1092,7 @@ const details = async (bank) => {
 		requestkey: config.requestkey,
 		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
-	if (response.resultCode != 0) return
+	if (!response || response?.resultCode != 0) return
 	let comment = response.momoMsg.serviceData
 		? JSON.parse(response.momoMsg.serviceData).COMMENT_VALUE
 		: JSON.parse(response.momoMsg.oldData).commentValue
@@ -1068,4 +1114,5 @@ module.exports = {
 	browse,
 	details,
 	M2MU_INIT_WEB,
+	GENERATE_TOKEN_AUTH_MSG,
 }

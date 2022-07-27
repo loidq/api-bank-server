@@ -63,7 +63,7 @@ const UserSchema = new Schema(
 			default: false,
 		},
 		roles: {
-			type: String,
+			type: [String],
 			enum: ['user', 'admin'],
 			default: 'user',
 		},

@@ -33,30 +33,42 @@ const login = async (req, res, next) => {
 }
 
 const register = async (req, res, next) => {
-	const { email, phone, password, name } = req.value.body
+	const session = await User.startSession()
+	session.startTransaction()
+	try {
+		const { email, phone, password, name } = req.value.body
+		const foundUser = await User.findOne({ $or: [{ email }, { phone }] })
+		if (foundUser)
+			return res.status(403).json({
+				success: false,
+				error: {
+					message: 'Email hoặc số điện thoại đã tồn tại.',
+				},
+			})
 
-	const foundUser = await User.findOne({ $or: [{ email }, { phone }] })
-	if (foundUser)
-		return res.status(403).json({
-			success: false,
-			error: {
-				message: 'Email hoặc số điện thoại đã tồn tại.',
-			},
+		const newUser = new User({ name, email, phone, password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
+
+		await newUser.save()
+
+		const token = encodeToken(newUser._id, newUser.session)
+		res.setHeader('Authorization', token)
+
+		const success = Boolean(newUser)
+
+		await session.commitTransaction()
+		session.endSession()
+
+		return res.status(201).json({
+			success,
+			message: success ? 'Tạo tài khoản thành công' : 'Tạo tài khoản thất bại, vui lòng thử lại sau.',
+			data: {},
 		})
-
-	const newUser = new User({ name, email, phone, password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
-
-	await newUser.save()
-
-	const token = encodeToken(newUser._id, newUser.session)
-	res.setHeader('Authorization', token)
-
-	const success = Boolean(newUser)
-	return res.status(200).json({
-		success,
-		message: success ? 'Tạo tài khoản thành công' : 'Tạo tài khoản thất bại, vui lòng thử lại sau.',
-		data: {},
-	})
+	} catch (error) {
+		console.log('error', error)
+		await session.abortTransaction()
+		session.endSession()
+		next(error)
+	}
 }
 
 const refreshsession = async (req, res, next) => {

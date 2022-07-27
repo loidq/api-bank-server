@@ -4,14 +4,28 @@ const CronJobManager = require('cron-job-manager')
 const manager = new CronJobManager()
 const Deck = require('../models/Deck')
 const Bank = require('../models/Bank')
-const queueBrowseMomo = new Bull('browseMomo')
-const queueDetailsMomo = new Bull('detailsMomo')
-const queueBrowseZaloPay = new Bull('browseZaloPay')
-const queueDetailsZaloPay = new Bull('detailsZaloPay')
+
+let clientRedis = {
+	host: process.env.REDIS_HOST || '127.0.0.1',
+	port: process.env.REDIS_PORT || 6379,
+}
+
+const redisUrl = `redis://${clientRedis.host}:${clientRedis.port}`
+
+const queueBrowseMomo = new Bull('browseMomo', redisUrl)
+const queueDetailsMomo = new Bull('detailsMomo', redisUrl)
+const queueBrowseZaloPay = new Bull('browseZaloPay', redisUrl)
+const queueDetailsZaloPay = new Bull('detailsZaloPay', redisUrl)
+const queueBalanceWallet = new Bull('balanceWallet', redisUrl)
 const MoMo = require('./momo')
 const ZaloPay = require('./zalopay')
+const Proxy = require('../models/Proxy')
 const dayjs = require('dayjs')
+const axios = require('axios')
+
 const cronBrowseMomo = async () => {
+	let sleep = 10
+	await queueBrowseMomo.empty()
 	let data = await Deck.find(
 		{
 			type: 'momo',
@@ -40,18 +54,21 @@ const cronBrowseMomo = async () => {
 	})
 	data = data.filter((item) => item.banks != null)
 
-	const promises = data.map((item) =>
+	const promises = data.map((item) => {
+		sleep += 10
 		queueBrowseMomo.add(item.banks, {
-			delay: 500,
+			delay: 301 + sleep,
 			removeOnComplete: true,
 			removeOnFail: true,
 			attempts: 1,
-			timeout: 4000,
+			timeout: 3500,
 		})
-	)
+	})
 	await Promise.allSettled(promises)
 }
 const cronDetailsMomo = async () => {
+	await queueDetailsMomo.empty()
+	let sleep = 10
 	let data = await Transaction.find(
 		{
 			status: false,
@@ -73,18 +90,21 @@ const cronDetailsMomo = async () => {
 	})
 
 	data = data.filter((item) => item.banks != null)
-	const promises = data.map((item) =>
+	const promises = data.map((item) => {
+		sleep += 10
 		queueDetailsMomo.add(item, {
-			delay: 500,
+			delay: 402 + sleep,
 			removeOnComplete: true,
 			removeOnFail: true,
 			attempts: 1,
 			timeout: 3000,
 		})
-	)
+	})
 	await Promise.allSettled(promises)
 }
 const cronBrowseZaloPay = async () => {
+	await queueBrowseZaloPay.empty()
+	let sleep = 10
 	let data = await Deck.find(
 		{
 			type: 'zalopay',
@@ -112,19 +132,21 @@ const cronBrowseZaloPay = async () => {
 		},
 	})
 	data = data.filter((item) => item.banks != null)
-	const promises = data.map((item) =>
+	const promises = data.map((item) => {
+		sleep += 10
 		queueBrowseZaloPay.add(item.banks, {
-			delay: 500,
+			delay: 503 + sleep,
 			removeOnComplete: true,
 			removeOnFail: true,
 			attempts: 1,
 			timeout: 3000,
 		})
-	)
+	})
 	await Promise.allSettled(promises)
 }
-
 const cronDetailsZaloPay = async () => {
+	await queueDetailsZaloPay.empty()
+	let sleep = 10
 	let data = await Transaction.find(
 		{
 			status: false,
@@ -146,59 +168,70 @@ const cronDetailsZaloPay = async () => {
 	})
 
 	data = data.filter((item) => item.banks != null)
-	const promises = data.map((item) =>
+	const promises = data.map((item) => {
+		sleep += 10
 		queueDetailsZaloPay.add(item, {
-			delay: 500,
+			delay: 604 + sleep,
 			removeOnComplete: true,
 			removeOnFail: true,
 			attempts: 1,
 			timeout: 2000,
 		})
-	)
+	})
 	await Promise.allSettled(promises)
 }
 
-manager.add(
-	'cronBrowse',
-	`*/30 * * * * *`,
-	async () => {
-		await Promise.allSettled([cronBrowseMomo(), cronBrowseZaloPay()])
-	},
-	{ start: true }
-)
-manager.add(
-	'cronDetails',
-	`*/5 * * * * *`,
-	async () => {
-		await Promise.allSettled([cronDetailsMomo(), cronDetailsZaloPay()])
-	},
-	{ start: true }
-)
-manager.add(
-	'cronPorxy',
-	`*/15 * * * * *`,
-	async () => {
-		try {
-			let { data: response, status } = await axios.get(
-				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
-				{
-					timeout: 3000,
-					validateStatus: () => true,
-				}
-			)
-			if (status != 200 || !response.data || !response.data.http_ipv4) return
-			const ipPort = response.data.http_ipv4.split(':')
-			await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
-				host: ipPort[0],
-				port: ipPort[1],
-				auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
-			})
-		} catch (e) {}
-	},
-	{
-		start: true,
-	}
-)
+const cronBalanceWallet = async () => {
+	await queueBalanceWallet.empty()
+	let sleep = 10
+	let data = await Deck.find(
+		{
+			type: { $in: ['momo', 'zalopay'] },
+			expired: {
+				$gt: new Date(),
+			},
+			banks: {
+				$ne: null,
+			},
+		},
+		{
+			_id: 0,
+			banks: 1,
+			type: 1,
+		}
+	).populate({
+		path: 'banks',
+		match: {
+			status: 1,
+			bank: { $in: ['momo', 'zalopay'] },
+		},
+		select: {
+			_id: 0,
+			token: 1,
+		},
+	})
+
+	data = data.filter((item) => item.banks != null)
+
+	const promises = data.map((item) => {
+		sleep += 10
+		queueBalanceWallet.add(
+			{
+				bank: item.type,
+				token: item.banks.token,
+			},
+			{
+				delay: 506 + sleep,
+				removeOnComplete: true,
+				removeOnFail: true,
+				attempts: 1,
+				timeout: 3000,
+			}
+		)
+	})
+	await Promise.allSettled(promises)
+}
+
 const browse = async (bank) => {
 	let { jwt_token } = bank
 	if (!bank.page_token) bank.page_token = ''
@@ -211,7 +244,7 @@ const browse = async (bank) => {
 		Authorization: `Bearer ${jwt_token}`,
 	})
 
-	if (!data.transactions) return
+	if (!data || !data?.transactions) return
 	let transactions = data.transactions
 	transactions.map(async (item) => {
 		if (
@@ -220,23 +253,33 @@ const browse = async (bank) => {
 			dayjs(item.trans_time).valueOf() >= fromDate &&
 			item.status_info.status == 1
 		) {
-			let check = await Transaction.findOne({
-				bank: 'zalopay',
-				banks: bank._id,
-				transId: item.trans_id,
-			})
-			if (!check) {
-				let transaction = new Transaction({
+			const session = await Transaction.startSession()
+			session.startTransaction()
+			try {
+				let check = await Transaction.findOne({
 					bank: 'zalopay',
-					owner: bank.owner,
 					banks: bank._id,
-					io: item.sign,
-					serviceId: item.system_type,
 					transId: item.trans_id,
-					amount: item.trans_amount,
-					time: item.trans_time,
 				})
-				await transaction.save()
+				if (!check) {
+					let transaction = new Transaction({
+						bank: 'zalopay',
+						owner: bank.owner,
+						banks: bank._id,
+						io: item.sign,
+						serviceId: item.system_type,
+						transId: item.trans_id,
+						amount: item.trans_amount,
+						time: item.trans_time,
+					})
+					await transaction.save()
+				}
+				await session.commitTransaction()
+				session.endSession()
+			} catch (error) {
+				console.log('error save Transaction', error)
+				await session.abortTransaction()
+				session.endSession()
 			}
 		}
 	})
@@ -253,68 +296,98 @@ const browse = async (bank) => {
 			newLogin: false,
 		})
 }
-
-queueBrowseMomo.process(10, (job, done) => {
-	MoMo.browse(job.data)
-	done()
-})
-queueDetailsMomo.process(5, (job, done) => {
-	MoMo.details(job.data)
-	done()
-})
-queueBrowseZaloPay.process(10, (job, done) => {
-	browse(job.data)
-	done()
-})
-queueDetailsZaloPay.process(5, (job, done) => {
-	ZaloPay.details(job.data)
-	done()
-})
-
-const axios = require('axios')
 manager.add(
-	'cronBalance',
+	'cronBrowse',
 	`*/30 * * * * *`,
+	() => {
+		Promise.allSettled([cronBrowseMomo(), cronBrowseZaloPay()])
+	},
+	{ start: true }
+)
+manager.add(
+	'cronDetails',
+	`*/5 * * * * *`,
+	() => {
+		Promise.allSettled([cronDetailsMomo(), cronDetailsZaloPay()])
+	},
+	{ start: true }
+)
+manager.add(
+	'cronPorxy',
+	`*/15 * * * * *`,
 	async () => {
-		let data = await Deck.find(
-			{
-				type: 'momo',
-				expired: {
-					$gt: new Date(),
-				},
-				banks: {
-					$ne: null,
-				},
-			},
-			{
-				_id: 0,
-				banks: 1,
-			}
-		).populate({
-			path: 'banks',
-			match: {
-				status: 1,
-				bank: 'momo',
-			},
-			select: {
-				token: 1,
-			},
-		})
-		data = data.filter((item) => item.banks != null)
-
-		Promise.allSettled(
-			data.map((item) =>
-				axios.get('http://localhost:3000/wallet/momo/getBalance', {
-					data: {
-						token: item.banks.token,
-					},
-					timeout: 2000,
+		try {
+			let { data: response, status } = await axios.get(
+				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
+				{
+					timeout: 5000,
 					validateStatus: () => true,
-				})
+				}
 			)
-		)
+
+			if (status != 200 || !response.data || !response.data.http_ipv4) return
+
+			const ipPort = response.data.http_ipv4.split(':')
+			await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
+				host: ipPort[0],
+				port: ipPort[1],
+				auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
+			})
+		} catch (e) {}
 	},
 	{
 		start: true,
 	}
 )
+manager.add(
+	'cronBalance',
+	`*/30 * * * * *`,
+	async () => {
+		cronBalanceWallet()
+	},
+	{
+		start: true,
+	}
+)
+
+queueBrowseMomo.process(10, (job, done) => {
+	try {
+		MoMo.browse(job.data)
+	} catch {}
+
+	done()
+})
+queueDetailsMomo.process(5, (job, done) => {
+	try {
+		MoMo.details(job.data)
+	} catch {}
+
+	done()
+})
+queueBrowseZaloPay.process(10, (job, done) => {
+	try {
+		browse(job.data)
+	} catch {}
+
+	done()
+})
+queueDetailsZaloPay.process(5, (job, done) => {
+	try {
+		ZaloPay.details(job.data)
+	} catch {}
+
+	done()
+})
+queueBalanceWallet.process(10, (job, done) => {
+	try {
+		axios.get(`http://localhost:3000/wallet/${job.data.bank}/getBalance`, {
+			data: {
+				token: job.data.token,
+			},
+			timeout: 3000,
+			validateStatus: () => true,
+		})
+	} catch {}
+
+	done()
+})

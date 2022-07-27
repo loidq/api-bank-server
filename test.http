@@ -1,0 +1,2 @@
+### RDP historical-pricing: retrieve time series pricing Interday summaries data
+GET https://api.refinitiv.com/data/historical-pricing/v1/views/interday-summaries/FB.O HTTP/1.1

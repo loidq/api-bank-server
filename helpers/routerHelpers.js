@@ -258,7 +258,7 @@ const schemas = {
 				'any.required': `Thiếu email gửi lên`,
 			}),
 		otp: Joi.string()
-			.regex(/^[0-9]{6}$/)
+			.regex(/^[0-9]{4,6}$/)
 			.required(),
 		password: Joi.string()
 			.regex(/^[0-9]{6}$/)

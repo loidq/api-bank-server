@@ -15,7 +15,7 @@ const priceList = async (req, res, next) => {
 const priceUpdate = async (req, res, next) => {
 	let { idPrice } = req.value.params
 	let dataUpdate = req.value.body
-	console.log(idPrice)
+
 	await Price.findByIdAndUpdate(idPrice, dataUpdate)
 	return res.status(200).json({
 		success: true,
