@@ -79,7 +79,7 @@ const listBank = async (req, res, next) => {
 			balance: 1,
 			status: 1,
 			createdAt: 1,
-			token: 1,
+
 			lastLogin: 1,
 			newLogin: 1,
 		}

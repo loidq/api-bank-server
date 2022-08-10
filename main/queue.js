@@ -318,7 +318,7 @@ manager.add(
 	async () => {
 		try {
 			let { data: response, status } = await axios.get(
-				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=vn_hcm',
+				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=random',
 				{
 					timeout: 5000,
 					validateStatus: () => true,

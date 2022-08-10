@@ -13,12 +13,6 @@ router
 	.get(passport.authenticate('jwt', { session: false }), UserController.getInfo)
 	.post(passport.authenticate('jwt', { session: false }), validateBody(schemas.changePasswordSchema), UserController.changePassword)
 	.patch(passport.authenticate('jwt', { session: false }), validateBody(schemas.updateTelegramSchema), UserController.updateTelegram)
-/*
-router
-	.route('/decks')
-	.get(passport.authenticate('jwt', { session: false }), UserController.getUserDecks)
-	.post(passport.authenticate('jwt', { session: false }), validateBody(schemas.deckSchema), UserController.newUserDeck)
-// .put(passport.authenticate('jwt', { session: false }),validateBody(schemas.userSchema),UserController.replaceUser)
-*/
+	.delete(passport.authenticate('jwt', { session: false }), UserController.deleteUser)
 
 module.exports = router

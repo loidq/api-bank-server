@@ -16,11 +16,13 @@ let infoDB = {
 }
 
 const mongoUrl = `mongodb://${infoDB.host}:${infoDB.port}/${infoDB.name}`
-
 require('./main/queue')
 
 mongoClient
 	.connect(mongoUrl, {
+		// authSource: infoDB.name,
+		// user: 'admin',
+		// pass: 'Dzl123hf5ga6bx',
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 	})
@@ -38,6 +40,7 @@ const port = process.env.PORT || 3000
 // })
 
 const app = express()
+const adminRoute = require('./routes/admin')
 const authRoute = require('./routes/auth')
 const userRoute = require('./routes/user')
 const securityRoute = require('./routes/security')
@@ -55,10 +58,10 @@ app.use(cors())
 
 // adding morgan to log HTTP requests
 // app.use(isProduction ? logger('combined', { stream: accessLogStream }) : logger('dev'))
-
-app.use(logger('dev'))
+if (!isProduction) app.use(logger('dev'))
 
 app.use(bodyParser.json())
+app.use('/admin', adminRoute)
 app.use('/auth', authRoute)
 app.use('/user', userRoute)
 app.use('/security', securityRoute)

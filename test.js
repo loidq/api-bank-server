@@ -1,13 +1,16 @@
 const axios = require('axios')
-const Error = require('../models/Error')
-const postAxios = async (url, data, headers, proxy = null) => {
-	let response = await axios.post(url, data, {
-		headers,
-		validateStatus: () => true,
-		httpsAgent: proxy,
+
+axios
+	.post(
+		'http://localhost:3000',
+		{ data: 12 },
+		{
+			validateStatus: () => true,
+
+			timeout: 4000,
+		}
+	)
+	.then((res) => {
+		console.log(res)
 	})
-	if (response.status != 200) {
-		await Error.find
-	}
-}
-postAxios('http://localhost:3000')
+	.catch()

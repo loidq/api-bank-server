@@ -48,7 +48,7 @@ const isJson = (str) => {
 
 const getJson = async (url, data, headers, proxy, method) => {
 	try {
-		return await axios({ method, url, data, headers, validateStatus: () => true, httpsAgent: proxy, timeout: 4000 })
+		return await axios({ method, url, data, headers, validateStatus: () => true, httpsAgent: proxy, timeout: 5000 })
 	} catch (error) {
 		if (error.code == 'ECONNABORTED')
 			newError({

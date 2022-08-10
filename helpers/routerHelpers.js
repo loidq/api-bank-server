@@ -120,6 +120,13 @@ const schemas = {
 			'any.required': `Thiếu mật khẩu gửi lên`,
 		}),
 	}),
+	changePasswordUserSchema: Joi.object().keys({
+		password: Joi.string().min(6).required().messages({
+			'string.min': `Mật khẩu cần ít nhât 6 kí tự`,
+			'string.empty': `Mật khẩu không được bỏ trống`,
+			'any.required': `Thiếu mật khẩu gửi lên`,
+		}),
+	}),
 	changePasswordSchema: Joi.object().keys({
 		password: Joi.string().min(6).required().messages({
 			'string.min': `Mật khẩu cần ít nhât 6 kí tự`,

@@ -4,12 +4,12 @@ module.exports = {
 		bank: {
 			type: 'ACB',
 			name: 'DANG QUANG LOI',
-			accountNumber: '999999999',
+			accountNumber: '9999999999',
 		},
 		wallet: {
 			type: 'Ví Momo',
 			name: 'DANG QUANG LOI',
-			phone: '03555555555',
+			phone: '035555555',
 		},
 	},
 }

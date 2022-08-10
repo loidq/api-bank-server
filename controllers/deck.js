@@ -1,6 +1,5 @@
 const { newError } = require('../helpers/routerHelpers')
 const Bank = require('../models/Bank')
-
 const Deck = require('../models/Deck')
 const Price = require('../models/Price')
 const User = require('../models/User')
@@ -8,13 +7,20 @@ const { uuidv4 } = require('../helpers/routerHelpers')
 const upgrade = async (req, res, next) => {
 	const { amount, _id } = req.user
 	const { type, period } = req.value.body
-	let { amount: price, name } = await Price.findOne({ type })
-
-	if (amount < price * period)
-		newError({
-			status: 400,
-			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+	let { amount: price, name, status } = await Price.findOne({ type })
+	if (!status)
+		return res.status(400).json({
+			success: false,
+			message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.',
+			data: {},
 		})
+	if (amount < price * period)
+		return res.status(400).json({
+			success: false,
+			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+			data: {},
+		})
+
 	await User.findByIdAndUpdate(_id, {
 		amount: amount - price * period,
 	})
@@ -48,12 +54,20 @@ const extend = async (req, res, next) => {
 			status: 400,
 			message: 'Tài khoản gia hạn không tồn tại, vui lòng tải lại trang.',
 		})
-	let { amount: price } = await Price.findOne({ type: check.bank })
-	if (amount < price * period)
-		newError({
-			status: 400,
-			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+	let { amount: price, status } = await Price.findOne({ type: check.bank })
+	if (!status)
+		return res.status(400).json({
+			success: false,
+			message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.',
+			data: {},
 		})
+	if (amount < price * period)
+		return res.status(400).json({
+			success: false,
+			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+			data: {},
+		})
+
 	await User.findByIdAndUpdate(_id, {
 		amount: amount - price * period,
 	})
@@ -78,7 +92,7 @@ const listDeck = async (req, res, next) => {
 		{
 			owner: _id,
 		},
-		{ _id: 0, expired: 1, type: 1, banks: 1 }
+		{ _id: 0, expired: 1, type: 1, banks: 1, name: 1 }
 	)
 	let total = await Deck.countDocuments({
 		owner: _id,
