@@ -7,7 +7,9 @@ const deleteNotification = async (req, res, next) => {
 	if (!notification)
 		return res.status(400).json({
 			success: false,
-			message: 'Thông báo cần xoá không tồn tại. Vui lòng tải lại trang',
+			error: {
+				message: 'Thông báo cần xoá không tồn tại. Vui lòng tải lại trang',
+			},
 		})
 	await notification.remove()
 	return res.status(200).json({ success: true, message: 'Đã xoá thông báo thành công.' })

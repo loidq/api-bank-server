@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
 const Error = require('../models/Error')
 const { svg2png } = require('svg-png-converter')

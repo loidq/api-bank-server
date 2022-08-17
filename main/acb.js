@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
 const Error = require('../models/Error')
 const { svg2png } = require('svg-png-converter')
@@ -80,13 +80,8 @@ const postAxios = async (url, data, headers, method = 'post') => {
 		validateStatus: () => true,
 		timeout: 4000,
 	})
+
 	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
 		if (!headers._id) {
 			newError({
 				message: statusError[response.data.message],
@@ -142,6 +137,7 @@ const Login = async (req, res, next) => {
 
 const GET_BALANCE = async (req, res, next) => {
 	let { newLogin, _id } = req.bank
+
 	if (newLogin) await Login(req, res, next)
 
 	let { response, status } = await postAxios(
@@ -169,12 +165,16 @@ const GET_TRANSACTION = async (req, res, next) => {
 
 	let dayNow = new Date()
 	let toDate = dayjs(dayNow).valueOf()
+
 	let fromDate = dayjs(dayNow.setDate(dayNow.getDate() - 3))
 		.hour(0)
 		.minute(0)
 		.second(0)
 		.millisecond(0)
 		.valueOf()
+
+	//`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/${accountNumber}/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&to=${toDate}&min=0&max=9007199254740991&page=1&size=100`,
+	//		`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&min=0&max=9007199254740991&page=1&size=100`,
 
 	let { response, headers } = await postAxios(
 		`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/${accountNumber}/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&to=${toDate}&min=0&max=9007199254740991&page=1&size=100`,
@@ -192,41 +192,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 	})
 }
 
-const captcha = async () => {
-	let captchaId = randomString(9)
-
-	let imgBase64 = await axios.get(`https://api-ipay.vietinbank.vn/api/get-captcha/${captchaId}`, {
-		validateStatus: () => true,
-		timeout: 2000,
-		responseType: 'arraybuffer',
-	})
-	if (imgBase64.status != 200)
-		newError({
-			status: 400,
-			message: 'Capcha VietinBank đang gặp vấn đề, vui lòng thử lại sau.',
-		})
-	let png = await svg2png({
-		input: imgBase64.data,
-		encoding: 'base64',
-		format: 'png',
-	})
-
-	let { data: resultCaptcha, status } = await axios.post('http://103.154.100.194:5000/vtb', png, {
-		validateStatus: () => true,
-		timeout: 2000,
-	})
-
-	resultCaptcha = `${resultCaptcha}`
-	if (status != 200 || resultCaptcha.length != 6)
-		newError({
-			message: 'Server Captcha đang có vấn đề vui lòng thử lại sau.',
-			status: 500,
-		})
-	return { captchaId, resultCaptcha }
-}
-
 module.exports = {
-	Login,
 	GET_BALANCE,
 	GET_TRANSACTION,
 }

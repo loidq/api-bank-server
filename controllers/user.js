@@ -31,9 +31,11 @@ const changePassword = async (req, res, next) => {
 			message: 'Mật khẩu cũ không chính xác.',
 			status: 400,
 		})
-	delete newUser.currentPassword
-	newUser.password = await user.isChangePassword(newUser.password)
-	const result = await User.findByIdAndUpdate(user._id, newUser)
+
+	let password = await user.isChangePassword(newUser.password)
+	const result = await User.findByIdAndUpdate(user._id, {
+		password: password,
+	})
 	return res.status(200).json({ success: Boolean(result), message: 'Thành công', data: {} })
 }
 
@@ -79,7 +81,9 @@ const deleteUser = async (req, res, next) => {
 		session.endSession()
 		return res.status(500).json({
 			success: false,
-			message: 'Có lỗi trong quá trình sử lí, vui lòng thử lại sau.',
+			error: {
+				message: 'Có lỗi trong quá trình sử lí, vui lòng thử lại sau.',
+			},
 			data: {},
 		})
 	}

@@ -1,9 +1,8 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
-const Error = require('../models/Error')
 const HttpsProxyAgent = require('https-proxy-agent')
 const Proxy = require('../models/Proxy')
 const randomString = (length) => {
@@ -40,20 +39,6 @@ const getProxy = async () => {
 		auth,
 	})
 	return proxy
-}
-
-const saveError = async (str, url) => {
-	if (str.error) {
-		let error = new Error({
-			data: str,
-			status: str.errorCode,
-		})
-		await error.save()
-		newError({
-			message: str.message || 'Có lỗi trong quá trình xử lý',
-			status: 400,
-		})
-	}
 }
 
 const isJson = (str) => {
@@ -93,12 +78,6 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 		})
 
 	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
 		if (headers._id && response.status == 401) {
 			await Bank.findByIdAndUpdate(headers._id, {
 				newLogin: true,
@@ -130,7 +109,11 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 			newLogin: true,
 		})
 	}
-	await saveError(responseDecrypt, url)
+	if (responseDecrypt.error)
+		newError({
+			message: responseDecrypt.message || 'Có lỗi trong quá trình xử lý',
+			status: 400,
+		})
 
 	return { response: responseDecrypt, headers: response.headers, status: response.status }
 }

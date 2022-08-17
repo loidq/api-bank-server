@@ -11,13 +11,18 @@ const upgrade = async (req, res, next) => {
 	if (!status)
 		return res.status(400).json({
 			success: false,
-			message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.',
+			error: {
+				message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.',
+			},
 			data: {},
 		})
 	if (amount < price * period)
 		return res.status(400).json({
 			success: false,
-			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+			error: {
+				message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+			},
+
 			data: {},
 		})
 
@@ -58,13 +63,13 @@ const extend = async (req, res, next) => {
 	if (!status)
 		return res.status(400).json({
 			success: false,
-			message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.',
+			error: { message: 'Cổng thanh toán này đang bảo trì, vui lòng quay lại sau.' },
 			data: {},
 		})
 	if (amount < price * period)
 		return res.status(400).json({
 			success: false,
-			message: 'Tài khoản của bạn không đủ tiền để thanh toán.',
+			error: { message: 'Tài khoản của bạn không đủ tiền để thanh toán.' },
 			data: {},
 		})
 

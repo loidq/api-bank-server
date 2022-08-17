@@ -29,7 +29,9 @@ router.route('/:bank/tranfer').post(
 		rejectHandler: (req, res) => {
 			res.status(503).json({
 				success: false,
-				message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+				error: {
+					message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+				},
 			})
 		},
 	}),
@@ -50,7 +52,9 @@ router.route('/:bank/sendMoney').post(
 		rejectHandler: (req, res) => {
 			res.status(503).json({
 				success: false,
-				message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+				error: {
+					message: 'Bạn đang trong hàng chờ, vui lòng thử lại sau vài giây.',
+				},
 			})
 		},
 	}),

@@ -46,7 +46,7 @@ const register = async (req, res, next) => {
 				},
 			})
 
-		const newUser = new User({ name, email, phone, password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
+		const newUser = new User({ name: name, email: email, phone: phone, password: password, session: uuidv4(), secret2FA: generateTempUniqueSecret() })
 
 		await newUser.save()
 

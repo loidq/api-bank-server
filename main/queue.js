@@ -4,7 +4,8 @@ const CronJobManager = require('cron-job-manager')
 const manager = new CronJobManager()
 const Deck = require('../models/Deck')
 const Bank = require('../models/Bank')
-
+const Rechange = require('../models/Recharge')
+const User = require('../models/User')
 let clientRedis = {
 	host: process.env.REDIS_HOST || '127.0.0.1',
 	port: process.env.REDIS_PORT || 6379,
@@ -20,7 +21,7 @@ const queueBalanceWallet = new Bull('balanceWallet', redisUrl)
 const MoMo = require('./momo')
 const ZaloPay = require('./zalopay')
 const Proxy = require('../models/Proxy')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const axios = require('axios')
 
 const cronBrowseMomo = async () => {
@@ -298,7 +299,7 @@ const browse = async (bank) => {
 }
 manager.add(
 	'cronBrowse',
-	`*/30 * * * * *`,
+	`*/15 * * * * *`,
 	() => {
 		Promise.allSettled([cronBrowseMomo(), cronBrowseZaloPay()])
 	},
@@ -339,6 +340,138 @@ manager.add(
 		start: true,
 	}
 )
+manager.add(
+	'cronNapTienBank',
+	'*/10 * * * * *',
+	async () => {
+		try {
+			let fromDate = dayjs(new Date().setMinutes(new Date().getMinutes() - 35)).valueOf()
+			let { data: response } = await axios.get(`http://localhost:3000/bank/acb/getTransaction`, {
+				data: {
+					token: '7a9e14a4-48a7-4e19-98ee-1c1a7d387b7f',
+					password: 'Theanh@321',
+					accountNumber: '2671071',
+				},
+				timeout: 3000,
+			})
+			let isSyntax = await Rechange.find(
+				{
+					status: false,
+					createdAt: { $gte: new Date().setMinutes(new Date().getMinutes() - 35) },
+				},
+				{
+					syntax: 1,
+					owner: 1,
+				}
+			)
+
+			if (isSyntax.length == 0) return
+			response.data.map(async (item) => {
+				if (item.type == 'IN' && item.amount >= 10000 && item.activeDatetime >= fromDate) {
+					let info = isSyntax.filter((s) => item.description.includes(s.syntax))
+
+					if (info.length > 0) {
+						const session = await Rechange.startSession()
+						session.startTransaction()
+						try {
+							await Promise.allSettled([
+								User.findByIdAndUpdate(info[0].owner, {
+									$inc: {
+										amount: item.amount,
+									},
+								}),
+								Rechange.findByIdAndUpdate(info[0]._id, {
+									status: true,
+									amount: item.amount,
+									type: 'ACB',
+								}),
+							])
+							await session.commitTransaction()
+							session.endSession()
+						} catch {
+							await session.abortTransaction()
+							session.endSession()
+						}
+					}
+				}
+			})
+		} catch {}
+	},
+	{
+		start: true,
+	}
+)
+manager.add(
+	'cronNapTienWallet',
+	'*/10 * * * * *',
+	async () => {
+		try {
+			let result = await Promise.allSettled([
+				Transaction.find(
+					{
+						banks: '62f6ab86330389b9aadc23d6',
+						status: true,
+						io: 1,
+						time: { $gte: new Date().setMinutes(new Date().getMinutes() - 35) },
+					},
+					{ io: 1, transId: 1, amount: 1, time: 1, comment: 1, _id: 0 }
+				)
+					.limit(20)
+					.sort({
+						time: -1,
+					}),
+				Rechange.find(
+					{
+						status: false,
+						createdAt: { $gte: new Date().setMinutes(new Date().getMinutes() - 35) },
+					},
+					{
+						syntax: 1,
+						owner: 1,
+					}
+				),
+			])
+			const dataMomo = result[0].status === 'fulfilled' ? result[0].value : []
+			const isSyntax = result[1].status === 'fulfilled' ? result[1].value : []
+
+			if (isSyntax.length == 0 || dataMomo.length == 0) return
+
+			dataMomo.map(async (item) => {
+				if (item?.comment.length >= 6 && item.amount >= 10000) {
+					let info = isSyntax.filter((s) => item.comment.includes(s.syntax))
+
+					if (info.length > 0) {
+						const session = await Rechange.startSession()
+						session.startTransaction()
+						try {
+							await Promise.allSettled([
+								User.findByIdAndUpdate(info[0].owner, {
+									$inc: {
+										amount: item.amount,
+									},
+								}),
+								Rechange.findByIdAndUpdate(info[0]._id, {
+									status: true,
+									amount: item.amount,
+									type: 'Ví MoMo',
+								}),
+							])
+							await session.commitTransaction()
+							session.endSession()
+						} catch {
+							await session.abortTransaction()
+							session.endSession()
+						}
+					}
+				}
+			})
+		} catch {}
+	},
+	{
+		start: true,
+	}
+)
+
 manager.add(
 	'cronBalance',
 	`*/30 * * * * *`,

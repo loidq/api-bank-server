@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
 const Error = require('../models/Error')
 const imageToBase64 = require('image-to-base64')
@@ -927,12 +927,9 @@ const randomString = (length) => {
 
 const refNo = () => dayjs().format('YYYYMMDDHHmmssSSS').substr(0, 16)
 
-
-
 function isObject(obj) {
 	return obj !== undefined && obj !== null && obj.constructor == Object
 }
-
 
 const isJson = (str) => {
 	if (!str)

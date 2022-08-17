@@ -3,13 +3,13 @@ module.exports = {
 	infoRecharge: {
 		bank: {
 			type: 'ACB',
-			name: 'DANG QUANG LOI',
-			accountNumber: '9999999999',
+			name: 'NGUYEN THE ANH',
+			accountNumber: '2671071',
 		},
 		wallet: {
 			type: 'Ví Momo',
-			name: 'DANG QUANG LOI',
-			phone: '035555555',
+			name: 'NGUYEN THE ANH',
+			phone: '0399323868',
 		},
 	},
 }

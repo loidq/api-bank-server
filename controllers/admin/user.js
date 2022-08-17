@@ -30,7 +30,9 @@ const getUser = async (req, res, next) => {
 	if (!user)
 		return res.status(400).json({
 			success: false,
-			message: 'Không tìm thấy tài khoản này.',
+			error: {
+				message: 'Không tìm thấy tài khoản này.',
+			},
 			data: {},
 		})
 	return res.status(200).json({ success: true, message: 'Thành công', data: user })
@@ -43,7 +45,9 @@ const changePassword = async (req, res, next) => {
 	if (!user)
 		return res.status(400).json({
 			success: false,
-			message: 'Không tìm thấy tài khoản này.',
+			error: {
+				message: 'Không tìm thấy tài khoản này.',
+			},
 			data: {},
 		})
 	let newPassword = await user.isChangePassword(password)
@@ -60,7 +64,9 @@ const updateUser = async (req, res, next) => {
 	if (!user)
 		return res.status(400).json({
 			success: false,
-			message: 'Không tìm thấy tài khoản này.',
+			error: {
+				message: 'Không tìm thấy tài khoản này.',
+			},
 			data: {},
 		})
 	await User.findByIdAndUpdate(id, data)
@@ -73,7 +79,9 @@ const deleteUser = async (req, res, next) => {
 	if (!user)
 		return res.status(400).json({
 			success: false,
-			message: 'Không tìm thấy tài khoản này.',
+			error: {
+				message: 'Không tìm thấy tài khoản này.',
+			},
 			data: {},
 		})
 	const session = await User.startSession()
@@ -106,7 +114,9 @@ const deleteUser = async (req, res, next) => {
 		session.endSession()
 		return res.status(500).json({
 			success: false,
-			message: 'Có lỗi trong quá trình sử lí, vui lòng thử lại sau.',
+			error: {
+				message: 'Có lỗi trong quá trình sử lí, vui lòng thử lại sau.',
+			},
 			data: {},
 		})
 	}

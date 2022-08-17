@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const axios = require('axios')
 const Error = require('../models/Error')
 const { newError, uuidv4, sha256, md5 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
 const Deck = require('../models/Deck')
@@ -59,15 +59,6 @@ const get_ip_address = async () => {
 	return response.ip
 }
 
-const saveError = async (str) => {
-	if (str.result == false) {
-		let error = new Error({
-			data: str.errorDesc || '',
-			status: str.errorCode,
-		})
-		await error.save()
-	}
-}
 function isObject(obj) {
 	return obj !== undefined && obj !== null && obj.constructor == Object
 }
@@ -79,11 +70,10 @@ const isJson = async (str) => {
 			status: 400,
 		})
 	if (isObject(str)) {
-		await saveError(str)
 		return str
 	} else {
 		let response = JSON.parse(decryptAES(str, '123456789012345678901234567890aa'))
-		await saveError(response)
+
 		return response
 	}
 }
@@ -97,8 +87,6 @@ const postJson = async (url, data, headers, proxy = null) => {
 			timeout: 5000,
 		})
 	} catch (error) {
-		console.log('logs ', `${error.code} - ${error.errno} - ${error.message}`)
-
 		if (error.code == 'ECONNABORTED')
 			newError({
 				status: 400,
@@ -440,7 +428,6 @@ const USER_LOGIN_MSG = async (req, res, next) => {
 			lastLogin: new Date(),
 			balance: response.extra.BALANCE,
 		})
-		console.log('newLogin')
 	}
 	req.nextName = ''
 	next()
@@ -450,7 +437,7 @@ const SOF_LIST_MANAGER_MSG = async (req, res, next) => {
 	let { jwt_token, phone, _id, lastLogin } = req.bank
 	if (new Date() - lastLogin >= 5350000) {
 		req.nextName = 'token'
-		console.log('get New Token')
+
 		return next()
 	}
 	let time = new Date().getTime(),
@@ -906,6 +893,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 			postBalance: response.extra.BALANCE,
 			comment,
 			status: true,
+			ip: req.clientIp,
 			banks: _id,
 			owner,
 		})
@@ -1028,7 +1016,9 @@ const browse = async (bank) => {
 				(item.serviceId == 'transfer_p2p_globalsearch' ||
 					item.serviceId == 'transfer_via_link_w2w' ||
 					item.serviceId == 'transfer_via_chat' ||
-					item.serviceId == 'transfer_p2p')
+					item.serviceId == 'transfer_p2p' ||
+					item.serviceId == 'transfer_myqr' ||
+					item.serviceId == 'transfer_p2p_search_paste')
 			) {
 				const session = await Transaction.startSession()
 				session.startTransaction()
@@ -1093,9 +1083,12 @@ const details = async (bank) => {
 		Authorization: `Bearer ${bank.banks.jwt_token}`,
 	})
 	if (!response || response?.resultCode != 0) return
-	let comment = response.momoMsg.serviceData
-		? JSON.parse(response.momoMsg.serviceData).COMMENT_VALUE
-		: JSON.parse(response.momoMsg.oldData).commentValue
+
+	let comment = response?.momoMsg?.serviceData
+		? JSON.parse(response?.momoMsg?.serviceData)?.COMMENT_VALUE
+		: response?.momoMsg?.oldData
+		? JSON.parse(response?.momoMsg?.oldData)?.commentValue
+		: null
 	await Transaction.findByIdAndUpdate(bank._id, {
 		status: true,
 		comment,

@@ -48,6 +48,9 @@ const TransactionSchema = new Schema(
 			ref: 'Bank',
 			index: true,
 		},
+		ip: {
+			type: String,
+		},
 		owner: {
 			type: Schema.Types.ObjectId,
 			ref: 'User',

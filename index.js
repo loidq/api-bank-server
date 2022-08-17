@@ -5,24 +5,31 @@ const cors = require('cors')
 const express = require('express')
 const logger = require('morgan')
 const mongoClient = require('mongoose')
+const mongoSanitize = require('express-mongo-sanitize')
+
 const { inrsetDB } = require('./config/migrate')
+const requestIp = require('request-ip')
+const sendMailQueue = require('./config/bullConfig')
+const emailService = require('./config/emailSetup')
 // const rfs = require('rotating-file-stream')
 // const { join } = require('path')
+const rateLimit = require('express-rate-limit')
 
 let infoDB = {
 	host: process.env.DB_HOST || 'localhost',
 	port: process.env.DB_PORT || 27017,
-	name: process.env.DB_NAME || 'api-bank-server',
+	name: process.env.DB_NAME || 'api-server',
+	user: process.env.DB_USER,
+	password: process.env.DB_PASSWORD,
 }
+const isProduction = process.env.NODE_ENV === 'production'
 
-const mongoUrl = `mongodb://${infoDB.host}:${infoDB.port}/${infoDB.name}`
-require('./main/queue')
+let mongoUrl = `mongodb://${infoDB.user}:${infoDB.password}@${infoDB.host}:${infoDB.port}/${infoDB.name}`
+
+if (!isProduction) mongoUrl = `mongodb://${infoDB.host}:${infoDB.port}/${infoDB.name}`
 
 mongoClient
 	.connect(mongoUrl, {
-		// authSource: infoDB.name,
-		// user: 'admin',
-		// pass: 'Dzl123hf5ga6bx',
 		useNewUrlParser: true,
 		useUnifiedTopology: true,
 	})
@@ -32,7 +39,8 @@ mongoClient
 	})
 	.catch((error) => console.error(`❌ Connect database is failed with error which is ${error}`))
 
-const isProduction = process.env.NODE_ENV === 'production'
+require('./main/queue')
+
 const port = process.env.PORT || 3000
 // const accessLogStream = rfs.createStream('access.log', {
 // 	interval: '1d', // rotate daily
@@ -40,6 +48,7 @@ const port = process.env.PORT || 3000
 // })
 
 const app = express()
+app.use(requestIp.mw())
 const adminRoute = require('./routes/admin')
 const authRoute = require('./routes/auth')
 const userRoute = require('./routes/user')
@@ -60,9 +69,46 @@ app.use(cors())
 // app.use(isProduction ? logger('combined', { stream: accessLogStream }) : logger('dev'))
 if (!isProduction) app.use(logger('dev'))
 
+const isLimiter = rateLimit({
+	windowMs: 60 * 1000,
+	max: 80,
+	message: {
+		success: false,
+		error: {
+			message: 'too many requests sent by this ip, please try again in a few minutes!',
+		},
+	},
+	keyGenerator: (req, res) => {
+		return req.clientIp // IP address from requestIp.mw(), as opposed to req.ip
+	},
+	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+})
+
+const limiterAuth = rateLimit({
+	windowMs: 60 * 1000,
+	max: 5,
+	message: {
+		success: false,
+		error: {
+			message: 'too many requests sent by this ip, please try again in a few minutes!',
+		},
+	},
+	keyGenerator: (req, res) => {
+		return req.clientIp // IP address from requestIp.mw(), as opposed to req.ip
+	},
+	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+})
+
+app.use(isLimiter)
+
 app.use(bodyParser.json())
+app.use(express.urlencoded({ extended: false }))
+app.use(mongoSanitize())
+
 app.use('/admin', adminRoute)
-app.use('/auth', authRoute)
+app.use('/auth', limiterAuth, authRoute)
 app.use('/user', userRoute)
 app.use('/security', securityRoute)
 app.use('/recharge', rechargeRoute)
@@ -95,3 +141,8 @@ app.use((err, req, res, next) => {
 })
 
 app.listen(port, () => console.log(`Server is listening on port ${port}`)).timeout = 10000
+
+sendMailQueue.process(2, (job, done) => {
+	emailService.mailSender(job.data)
+	done()
+})

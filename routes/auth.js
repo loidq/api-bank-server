@@ -9,7 +9,15 @@ const { validateBody, schemas } = require('../helpers/routerHelpers')
 
 router.route('/register').post(validateBody(schemas.registerSchema), AuthController.register)
 
-router.route('/login').post(validateBody(schemas.loginSchema), passport.authenticate('local', { session: false }), AuthController.login)
+router.route('/login').post(
+	validateBody(schemas.loginSchema),
+	(req, res) => {
+		console.log(req.value.body, req.body)
+	},
+	passport.authenticate('local', { session: false }),
+
+	AuthController.login
+)
 
 router
 	.route('/session')

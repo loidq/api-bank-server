@@ -1,10 +1,11 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const { newError, uuidv4 } = require('../helpers/routerHelpers')
-const dayjs = require('dayjs')
+const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
 const Error = require('../models/Error')
 const imageToBase64 = require('image-to-base64')
+
 const config = {
 	publicKey:
 		'-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAiEPragkOAc+PM2TqG1Xqh/+mqWP0dJge+VfJ/H75nwCchOMNG297SgRKx7M3\nrvwxUfTw602rZ1LiwLV+h16/tGj5BxuQCkfAj+QFp3P4A+Kar8spo1mW2i7MCshhtzF72SHJ\n9K1yH67RmrCZdHpYdezs5yb1FtccUkUUhpbTX9PBaKMhxmecJE1jORRiSCdRl+c54NHVAbxf\nGrDDMRFw3PFv9cCmLSvP8/7mI3ClmDz+e9PsxFDItaynaMogrJDOm3D4i3CF2YgVmGBNBWfy\na/0t88eCWfM34JJ87ufQuzi6Fs9n3XOeWXN8DNc02YD9/Ua7lKFxaFF9iQfZkB3ckwIDAQAB\n-----END RSA PUBLIC KEY-----',
@@ -91,7 +92,7 @@ const postAxios = async (url, data, headers) => {
 		validateStatus: () => true,
 		timeout: 5000,
 	})
-	console.log(response.status, response.data)
+
 	if (response.status != 200 || response.data.code != '00') {
 		let error = new Error({
 			url,
