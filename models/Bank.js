@@ -42,6 +42,15 @@ const BankSchema = new Schema(
 		sessionId: {
 			type: String,
 		},
+		mobileId: {
+			type: String,
+		},
+		clientId: {
+			type: String,
+		},
+		cif: {
+			type: String,
+		},
 		cookies: {
 			type: Object,
 		},

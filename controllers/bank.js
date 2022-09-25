@@ -217,6 +217,7 @@ const sendTokenToMail = async (req, res, next) => {
 	await sendMailQueue.add(
 		{
 			emailTo: email,
+			subject: '[THUEAPI.NET] TOKEN sử dụng api, vui lòng không chia sẻ cho bất kì ai, hãy cẩn thận kẻ gian!!!',
 			message: bank.token,
 		},
 		{

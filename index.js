@@ -1,11 +1,12 @@
 require('dotenv').config()
+const cookieParser = require('cookie-parser')
+
 const bodyParser = require('body-parser')
 const helmet = require('helmet')
 const cors = require('cors')
 const express = require('express')
 const logger = require('morgan')
 const mongoClient = require('mongoose')
-const mongoSanitize = require('express-mongo-sanitize')
 
 const { inrsetDB } = require('./config/migrate')
 const requestIp = require('request-ip')
@@ -102,12 +103,11 @@ const limiterAuth = rateLimit({
 })
 
 app.use(isLimiter)
-
+app.use(cookieParser('18smvbyGHkan178DqpMj75RgVhB'))
 app.use(bodyParser.json())
 app.use(express.urlencoded({ extended: false }))
-app.use(mongoSanitize())
 
-app.use('/admin', adminRoute)
+// app.use('/admin', adminRoute)
 app.use('/auth', limiterAuth, authRoute)
 app.use('/user', userRoute)
 app.use('/security', securityRoute)

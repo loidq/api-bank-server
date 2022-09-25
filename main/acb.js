@@ -3,7 +3,6 @@ const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
 const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
-const Error = require('../models/Error')
 const { svg2png } = require('svg-png-converter')
 const qs = require('qs')
 const NodeRSA = require('node-rsa')
@@ -35,20 +34,7 @@ const randomString = (length) => {
 function isObject(obj) {
 	return obj !== undefined && obj !== null && obj.constructor == Object
 }
-const saveError = async (str, url) => {
-	if (str.codeStatus != '200') {
-		let error = new Error({
-			data: str,
-			status: str.errorCode,
-			url,
-		})
-		await error.save()
-		newError({
-			message: str.messageStatus || 'Có lỗi trong quá trình xử lý',
-			status: 400,
-		})
-	}
-}
+const saveError = async (str, url) => {}
 
 const isJson = (str) => {
 	if (!str)
@@ -105,7 +91,12 @@ const postAxios = async (url, data, headers, method = 'post') => {
 	// 		newLogin: true,
 	// 	})
 	// }
-	if (headers._id) await saveError(responseDecrypt, url)
+	if (headers._id && responseDecrypt.codeStatus != '200')
+		newError({
+			message: str.messageStatus || 'Có lỗi trong quá trình xử lý',
+			status: 400,
+		})
+
 	return { response: responseDecrypt, headers: response.headers, status: response.status }
 }
 
@@ -164,6 +155,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 	if (newLogin) await Login(req, res, next)
 
 	let dayNow = new Date()
+
 	let toDate = dayjs(dayNow).valueOf()
 
 	let fromDate = dayjs(dayNow.setDate(dayNow.getDate() - 3))
@@ -177,7 +169,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 	//		`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&min=0&max=9007199254740991&page=1&size=100`,
 
 	let { response, headers } = await postAxios(
-		`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/${accountNumber}/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&to=${toDate}&min=0&max=9007199254740991&page=1&size=100`,
+		`https://apiapp.acb.com.vn/mb/legacy/ss/cs/bankservice/saving/tx-history?account=${accountNumber}&transactionType=ALL&from=${fromDate}&min=0&max=9007199254740991&page=1&size=100`,
 		'',
 		{
 			Authorization: `Bearer ${req.bank.jwt_token}`,

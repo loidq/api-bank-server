@@ -65,7 +65,7 @@ const isJson = (str) => {
 	if (isObject(str)) {
 		return str
 	} else {
-		return JSON.parse(str)
+		return decryptData(str)
 	}
 }
 
@@ -73,7 +73,6 @@ const postAxios = async (url, data, headers) => {
 	let response = await axios.post(url, data, {
 		headers: {
 			...headers,
-			'X-Channel': 'Web',
 			'Content-Type': 'application/json',
 		},
 		validateStatus: () => true,
@@ -95,7 +94,7 @@ const postAxios = async (url, data, headers) => {
 		})
 	}
 
-	let responseDecrypt = isJson(response.data)
+	let responseDecrypt = isJson(response.data.data)
 	if (
 		headers._id &&
 		(responseDecrypt.code == '108' || responseDecrypt.code == 'EXP' || responseDecrypt.code == 'KICKOUT' || responseDecrypt.code == 'Unauthorized')
@@ -111,79 +110,72 @@ const postAxios = async (url, data, headers) => {
 			status: 400,
 		})
 	}
-
 	return { response: responseDecrypt, headers: response.headers }
 }
 
 const Login = async (req, res, next) => {
 	let { username, _id } = req.bank
 	let { password } = req.value.body
-	let { uuid, captchaValue } = await captcha()
-
 	let data = {
-		user: username,
+		user_name: username,
 		password,
-		mid: 6,
-		checkAcctPkg: '1',
-		captchaToken: uuid,
-		captchaValue,
-		DT: 'Windows',
-		OV: '10',
-		PM: 'Chrome 104.0.0.0',
+		socket_id: '',
+		captcha_id: await captcha(),
+		clientKey: config.public,
 		lang: 'vi',
 	}
 
-	let { response, headers } = await postAxios('https://digiapp.vietcombank.com.vn/authen-service/v1/login', data, {
-		_id: false,
-	})
-
+	let { response, headers } = await postAxios(
+		'https://vcbdigibank.vietcombank.com.vn/w1/auth',
+		{
+			data: encryptData(data),
+		},
+		{
+			_id: false,
+		}
+	)
 	let cookies = headers['set-cookie']
-	let jwt_token = response.accessKey
-	let cif = response.userInfo.cif
-	let mobileId = response.userInfo.clientId
-	let clientId = response.userInfo.clientId
-	let sessionId = response.sessionId
+	let jwt_token = response.token
+
 	await Bank.findByIdAndUpdate(_id, {
 		jwt_token,
 		cookies,
-		accountNumber: response.userInfo.defaultAccount,
-		mobileId,
-		clientId,
-		cif,
+		accountNumber: response.user_info.defaultAccount,
 		newLogin: false,
-		sessionId,
 	})
 	req.bank.jwt_token = jwt_token
 	req.bank.cookies = cookies
 	req.bank.newLogin = false
-	req.bank.cif = cif
-	req.bank.mobileId = mobileId
-	req.bank.clientId = clientId
-	req.bank.sessionId = sessionId
 }
 
 const GET_BALANCE = async (req, res, next) => {
-	let { jwt_token, cookies, username, newLogin, _id, cif, mobileId, clientId, sessionId } = req.bank
+	let { jwt_token, cookies, username, newLogin, _id } = req.bank
 	if (newLogin) await Login(req, res, next)
 	let data = {
-		DT: 'Windows',
-		PM: 'Chrome 104.0.0.0',
-		OV: '10',
+		user_name: username,
+		data: {
+			processCode: 'laydanhsachtaikhoan',
+			cif: '',
+			sessionId: '',
+			type: 1,
+			lang: 'vi',
+		},
+		client_key: config.public,
 		lang: 'vi',
-		type: '1',
-		mid: 8,
-		user: username,
-		cif: req.bank.cif,
-		mobileId: req.bank.mobileId,
-		clientId: req.bank.clientId,
-		sessionId: req.bank.sessionId,
 	}
 
-	let { response, headers } = await postAxios('https://digiapp.vietcombank.com.vn/bank-service/v1/get-list-account-via-cif', data, {
-		Authorization: `Bearer ${req.bank.jwt_token}`,
-		Cookie: req.bank.cookies,
-		_id,
-	})
+	let { response, headers } = await postAxios(
+		'https://vcbdigibank.vietcombank.com.vn/w1/process-ib',
+		{
+			data: encryptData(data),
+			mid: 'laydanhsachtaikhoan',
+		},
+		{
+			Authorization: `Bearer ${req.bank.jwt_token}`,
+			Cookie: req.bank.cookies,
+			_id,
+		}
+	)
 
 	return res.status(200).json({
 		success: true,
@@ -204,30 +196,36 @@ const GET_TRANSACTION = async (req, res, next) => {
 	let fromDate = dayjs(dayNow.setDate(dayNow.getDate() - 3)).format('DD/MM/YYYY')
 
 	let data = {
-		DT: 'Windows',
-		PM: 'Chrome 104.0.0.0',
-		OV: '10',
+		user_name: username,
+		data: {
+			processCode: 'laysaoketaikhoan',
+			cif: '',
+			sessionId: '',
+			accountNo: accountNumber,
+			accountType: 'D',
+			fromDate,
+			toDate,
+			pageIndex: 0,
+			lengthInPage: 999999,
+			stmtDate: '',
+			stmtType: '',
+			lang: 'vi',
+		},
+		client_key: config.public,
 		lang: 'vi',
-		accountNo: accountNumber,
-		accountType: 'D',
-		fromDate,
-		toDate,
-		pageIndex: 0,
-		lengthInPage: 999999,
-		stmtDate: '',
-		stmtType: '',
-		mid: 14,
-		cif: req.bank.cif,
-		user: username,
-		mobileId: req.bank.mobileId,
-		clientId: req.bank.clientId,
-		sessionId: req.bank.sessionId,
 	}
-	let { response, headers } = await postAxios('https://digiapp.vietcombank.com.vn/bank-service/v1/transaction-history', data, {
-		Authorization: `Bearer ${req.bank.jwt_token}`,
-		Cookie: req.bank.cookies,
-		_id,
-	})
+	let { response, headers } = await postAxios(
+		'https://vcbdigibank.vietcombank.com.vn/w1/process-ib',
+		{
+			data: encryptData(data),
+			mid: 'laysaoketaikhoan',
+		},
+		{
+			Authorization: `Bearer ${req.bank.jwt_token}`,
+			Cookie: req.bank.cookies,
+			_id,
+		}
+	)
 	return res.status(200).json({
 		success: true,
 		message: 'Thành công',
@@ -236,44 +234,6 @@ const GET_TRANSACTION = async (req, res, next) => {
 }
 
 const captcha = async () => {
-	let uuid = uuidv4()
-
-	let imgBase64 = await imageToBase64(`https://digiapp.vietcombank.com.vn/utility-service/v1/captcha/${uuid}`)
-
-	let { data: resultCaptcha } = await axios.post(
-		'https://anticaptcha.top/api/captcha',
-		{
-			apikey: '1f4c68b432168a7c1fe8ac7b0f7f352a',
-			img: imgBase64,
-			type: 14,
-		},
-		{
-			validateStatus: () => true,
-			timeout: 5000,
-		}
-	)
-
-	if (!resultCaptcha?.success || `${resultCaptcha?.captcha}`.length != 5)
-		newError({
-			message: 'Server Captcha đang có vấn đề vui lòng thử lại sau.',
-			status: 500,
-		})
-
-	// let body = {
-	// 	captcha_id: uuid,
-	// 	captcha_text: resultCaptcha.captcha,
-	// }
-
-	// let { data: response, status } = await axios.post('https://vcbdigibank.vietcombank.com.vn/w1/valid-captcha', body, {
-	// 	validateStatus: () => true,
-	// })
-
-	// if (response.code != '00') newError({ message: response.des || 'Capcha Vietconbank đang gặp vấn đề, vui lòng thử lại sau.', status: 400 })
-
-	return { uuid, captchaValue: resultCaptcha.captcha }
-}
-
-const captcha1 = async () => {
 	let uuid = uuidv4()
 	let imgBase64 = await imageToBase64(`https://vcbdigibank.vietcombank.com.vn/w1/get-captcha/${uuid}`)
 	let { data: resultCaptcha } = await axios.post('http://103.154.100.194:5000/vcb', imgBase64, {

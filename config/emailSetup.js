@@ -12,7 +12,7 @@ const mailSender = async (mailData) => {
 		const data = {
 			from: 'pay247.one@gmail.com',
 			to: mailData.emailTo,
-			subject: '[THUEAPI.NET] TOKEN sử dụng api, vui lòng không chia sẻ cho bất kì ai, hãy cẩn thận kẻ gian!!!',
+			subject: mailData.subject,
 			html: `<h3>${mailData.message}</h3>`,
 		}
 

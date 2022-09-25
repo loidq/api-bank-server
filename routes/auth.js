@@ -11,9 +11,7 @@ router.route('/register').post(validateBody(schemas.registerSchema), AuthControl
 
 router.route('/login').post(
 	validateBody(schemas.loginSchema),
-	(req, res) => {
-		console.log(req.value.body, req.body)
-	},
+
 	passport.authenticate('local', { session: false }),
 
 	AuthController.login

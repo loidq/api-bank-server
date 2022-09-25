@@ -3,7 +3,6 @@ const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
 const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
-const Error = require('../models/Error')
 const imageToBase64 = require('image-to-base64')
 const config = {
 	publicKey:
@@ -961,12 +960,6 @@ const postAxios = async (url, data, headers) => {
 	})
 
 	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
 		newError({
 			message: statusError.http[response.status] || response.data,
 			status: 400,

@@ -3,8 +3,6 @@ const axios = require('axios')
 const { newError, uuidv4, md5 } = require('../helpers/routerHelpers')
 const dayjs = require('../config/day')
 const Bank = require('../models/Bank')
-const Error = require('../models/Error')
-const { svg2png } = require('svg-png-converter')
 const qs = require('qs')
 const NodeRSA = require('node-rsa')
 const config = {
@@ -50,19 +48,6 @@ const randomString = (length) => {
 function isObject(obj) {
 	return obj !== undefined && obj !== null && obj.constructor == Object
 }
-const saveError = async (str, url) => {
-	if (str.error == true) {
-		let error = new Error({
-			data: str,
-			status: str.errorCode,
-		})
-		await error.save()
-		newError({
-			message: str.errorMessage || 'Có lỗi trong quá trình xử lý',
-			status: 400,
-		})
-	}
-}
 
 const isJson = (str) => {
 	if (!str)
@@ -92,14 +77,6 @@ const postAxios = async (url, data, headers) => {
 		timeout: 4000,
 	})
 
-	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
-	}
 	if (response.data.error == true) {
 		if (headers._id && response.data.errorCode == '96') {
 			await Bank.findByIdAndUpdate(headers._id, {
@@ -118,8 +95,13 @@ const postAxios = async (url, data, headers) => {
 			newLogin: true,
 		})
 	}
+	if (responseDecrypt.error == true) {
+		newError({
+			message: responseDecrypt.errorMessage || 'Có lỗi trong quá trình xử lý',
+			status: 400,
+		})
+	}
 
-	await saveError(responseDecrypt, url)
 	return { response: responseDecrypt, headers: response.headers }
 }
 
@@ -232,13 +214,9 @@ const captcha = async () => {
 			status: 400,
 			message: 'Capcha VietinBank đang gặp vấn đề, vui lòng thử lại sau.',
 		})
-	let png = await svg2png({
-		input: imgBase64.data,
-		encoding: 'base64',
-		format: 'png',
-	})
+	let imageBase64 = Buffer.from(imgBase64.data, 'binary').toString('base64')
 
-	let { data: resultCaptcha, status } = await axios.post('http://103.154.100.194:5000/vtb', png, {
+	let { data: resultCaptcha, status } = await axios.post('http://103.154.100.194:5000/vtb', imageBase64, {
 		validateStatus: () => true,
 		timeout: 2000,
 	})

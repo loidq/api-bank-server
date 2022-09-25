@@ -14,6 +14,115 @@ const getRandomInt = (min, max) => {
 	return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
+const converterPhoneNumber = (phone) => {
+	let arr = [
+		{
+			old: '016966',
+			new: '03966',
+		},
+		{
+			old: '0169',
+			new: '039',
+		},
+		{
+			old: '0168',
+			new: '038',
+		},
+		{
+			old: '0167',
+			new: '037',
+		},
+		{
+			old: '0166',
+			new: '036',
+		},
+		{
+			old: '0165',
+			new: '035',
+		},
+		{
+			old: '0164',
+			new: '034',
+		},
+		{
+			old: '0163',
+			new: '033',
+		},
+		{
+			old: '0162',
+			new: '032',
+		},
+		{
+			old: '0120',
+			new: '070',
+		},
+		{
+			old: '0121',
+			new: '079',
+		},
+		{
+			old: '0122',
+			new: '077',
+		},
+		{
+			old: '0126',
+			new: '076',
+		},
+		{
+			old: '0128',
+			new: '078',
+		},
+		{
+			old: '0123',
+			new: '083',
+		},
+		{
+			old: '0124',
+			new: '084',
+		},
+		{
+			old: '0125',
+			new: '085',
+		},
+		{
+			old: '0127',
+			new: '081',
+		},
+		{
+			old: '0129',
+			new: '082',
+		},
+
+		{
+			old: '01992',
+			new: '059',
+		},
+		{
+			old: '01993',
+			new: '059',
+		},
+		{
+			old: '01998',
+			new: '059',
+		},
+		{
+			old: '01999',
+			new: '059',
+		},
+		{
+			old: '0186',
+			new: '056',
+		},
+		{
+			old: '0188',
+			new: '058',
+		},
+	]
+
+	let result = arr.find((item) => phone.indexOf(item.old) === 0)
+	return result ? `${result.new}${phone.substring(result.old.length)}` : phone
+}
+
 const md5 = (data) => crypto.createHash('md5').update(data).digest('hex')
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex')
 
@@ -105,7 +214,7 @@ const schemas = {
 				'any.required': `Tên không được bỏ trống`,
 			}),
 		phone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -203,7 +312,7 @@ const schemas = {
 			.regex(/^[0-9a-zA-Z]{24}$/)
 			.required(),
 		numberPhone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -216,7 +325,7 @@ const schemas = {
 			.regex(/^[0-9a-zA-Z]{24}$/)
 			.required(),
 		numberPhone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -239,7 +348,7 @@ const schemas = {
 			})
 			.required(),
 		numberPhone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -254,7 +363,7 @@ const schemas = {
 	}),
 	getOTPWallet: Joi.object().keys({
 		phone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -264,7 +373,7 @@ const schemas = {
 	}),
 	confirmOTPWallet: Joi.object().keys({
 		phone: Joi.string()
-			.regex(/^(0|\+84)(\s|\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\d)(\s|\.)?(\d{3})(\s|\.)?(\d{3})$/)
+			.regex(/([\+84|84|0]+(3|5|7|8|9|1[2|6|8|9]))+([0-9]{8})\b/)
 			.required()
 			.messages({
 				'string.empty': `Số điện thoại không được bỏ trống`,
@@ -318,4 +427,5 @@ module.exports = {
 	validateParam,
 	schemas,
 	getRandomInt,
+	converterPhoneNumber,
 }

@@ -1,7 +1,6 @@
 const Bank = require('../models/Bank')
 const axios = require('axios')
 const crypto = require('crypto')
-const Error = require('../models/Error')
 const dayjs = require('../config/day')
 const { uuidv4, sha256, newError } = require('../helpers/routerHelpers')
 const Transaction = require('../models/Transaction')
@@ -71,14 +70,6 @@ const getJson = async (url, data, headers, proxy, method) => {
 const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 	let response = await getJson(url, data, headers, proxy, method)
 
-	if (response.status != 200) {
-		let error = new Error({
-			url,
-			data: response.data,
-			status: response.status,
-		})
-		await error.save()
-	}
 	let responseData = isJson(response.data)
 
 	if (headers._id && responseData.error && (responseData.error.code == 16 || responseData.error.error == 'Unauthenticated')) {

@@ -6,6 +6,7 @@ const Deck = require('../models/Deck')
 const Bank = require('../models/Bank')
 const Rechange = require('../models/Recharge')
 const User = require('../models/User')
+const { isIpV4 } = require('../config/validate')
 let clientRedis = {
 	host: process.env.REDIS_HOST || '127.0.0.1',
 	port: process.env.REDIS_PORT || 6379,
@@ -318,23 +319,29 @@ manager.add(
 	`*/15 * * * * *`,
 	async () => {
 		try {
-			let { data: response, status } = await axios.get(
-				'https://api.tinproxy.com/proxy/get-new-proxy?api_key=cg5CqSHoCop3EKtumyT28VQ6R1twkC5D&authen_ips=AUTHEN_IPS&location=random',
+			let { data: response, status } = await axios.post(
+				'https://tmproxy.com/api/proxy/get-new-proxy',
+				{
+					api_key: '1b6e63987f42c6a4cd27d8f3eef08c52',
+					sign: 'string',
+					id_location: 1,
+				},
 				{
 					timeout: 5000,
 					validateStatus: () => true,
 				}
 			)
 
-			if (status != 200 || !response.data || !response.data.http_ipv4) return
+			if (status != 200 || response.code != 0 || !response?.data || !response?.data?.https) return
 
-			const ipPort = response.data.http_ipv4.split(':')
+			const ipPort = response.data.https.split(':')
+			if (!isIpV4(ipPort[0])) return
+
 			await Proxy.findByIdAndUpdate('62d04051bdd86d759ccc4161', {
 				host: ipPort[0],
 				port: ipPort[1],
-				auth: `${response.data.authentication.username}:${response.data.authentication.password}`,
 			})
-		} catch (e) {}
+		} catch {}
 	},
 	{
 		start: true,
@@ -401,6 +408,7 @@ manager.add(
 		start: true,
 	}
 )
+
 manager.add(
 	'cronNapTienWallet',
 	'*/10 * * * * *',

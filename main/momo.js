@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const axios = require('axios')
 const Error = require('../models/Error')
-const { newError, uuidv4, sha256, md5 } = require('../helpers/routerHelpers')
+const { newError, uuidv4, sha256, md5, converterPhoneNumber } = require('../helpers/routerHelpers')
 const dayjs = require('../config/day')
 const Transaction = require('../models/Transaction')
 const Bank = require('../models/Bank')
@@ -646,6 +646,7 @@ const M2MU_INIT_WEB = async (req, res, next) => {
 	let { phone, jwt_token } = req.bank
 	if (!req.info) req.info = {}
 	let { numberPhone: partnerId, amount, comment, NAME: partnerName } = req.value.body
+	partnerId = converterPhoneNumber(partnerId)
 	let time = new Date().getTime()
 	let checkSum = generateCheckSum(req.bank, 'M2MU_INIT', time)
 	let data = encryptAES(
@@ -731,6 +732,7 @@ const M2MU_INIT = async (req, res, next) => {
 	let { phone, jwt_token } = req.bank
 	let { NAME: partnerName } = req.info
 	let { numberPhone: partnerId, amount, comment } = req.value.body
+	partnerId = converterPhoneNumber(partnerId)
 	let time = new Date().getTime()
 	let checkSum = generateCheckSum(req.bank, 'M2MU_INIT', time)
 	let data = encryptAES(
@@ -887,7 +889,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 			io: -1,
 			time: response.momoMsg.replyMsgs[0].tranHisMsg.finishTime,
 			transId: response.momoMsg.replyMsgs[0].transId,
-			partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
+			partnerId: converterPhoneNumber(response.momoMsg.replyMsgs[0].tranHisMsg.partnerId),
 			partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
 			amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
 			postBalance: response.extra.BALANCE,
@@ -907,7 +909,7 @@ const M2MU_CONFIRM = async (req, res, next) => {
 		io: -1,
 		time: response.momoMsg.replyMsgs[0].tranHisMsg.finishTime,
 		transId: response.momoMsg.replyMsgs[0].transId,
-		partnerId: response.momoMsg.replyMsgs[0].tranHisMsg.partnerId,
+		partnerId: converterPhoneNumber(response.momoMsg.replyMsgs[0].tranHisMsg.partnerId),
 		partnerName: response.momoMsg.replyMsgs[0].tranHisMsg.partnerName,
 		amount: response.momoMsg.replyMsgs[0].tranHisMsg.amount,
 		postBalance: response.extra.BALANCE,
@@ -1036,7 +1038,7 @@ const browse = async (bank) => {
 							io: item.io,
 							serviceId: item.serviceId,
 							transId: item.transId,
-							partnerId: item.io == -1 ? item.targetId : item.sourceId,
+							partnerId: item.io == -1 ? converterPhoneNumber(item.targetId) : converterPhoneNumber(item.sourceId),
 							partnerName: item.io == -1 ? item.targetName : item.sourceName,
 							amount: item.totalOriginalAmount,
 							postBalance: item.postBalance,

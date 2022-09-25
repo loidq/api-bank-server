@@ -3,6 +3,8 @@ const { generateTempUniqueSecret } = require('../utils/2FA')
 const JWT = require('jsonwebtoken')
 const { md5, sha256, uuidv4 } = require('../helpers/routerHelpers')
 const { JWT_SECRET } = require('../config/main')
+const sendMailQueue = require('../config/bullConfig')
+const dayjs = require('../config/day')
 const encodeToken = (userID, session) => {
 	return JWT.sign(
 		{
@@ -24,6 +26,29 @@ const session = async (req, res, next) => {
 const login = async (req, res, next) => {
 	const token = encodeToken(req.user._id, req.user.session)
 	res.setHeader('Authorization', token)
+
+	if (req.user.roles.includes('admin'))
+		res.cookie('XSRF-TOKEN', `${token}`, {
+			maxAge: 1000 * 60 * 24, // would expire after 15 minutes
+			httpOnly: true, // The cookie only accessible by the web server
+			secure: true,
+			// signed: true, // Indicates if the cookie should be signed
+		})
+
+	await sendMailQueue.add(
+		{
+			emailTo: req.user.email,
+			subject: '[THUEAPI.NET] Cảnh Báo Đăng Nhập',
+			message: `Tài khoản bạn đăng nhập vào lúc ${dayjs(new Date()).format('DD/MM/YYYY HH:mm:ss')}<br>Địa chỉ IP: ${req.clientIp}`,
+		},
+		{
+			removeOnComplete: true,
+			removeOnFail: true,
+			attempts: 3,
+			timeout: 10000,
+		}
+	)
+
 	return res.status(200).json({
 		success: true,
 		data: {
@@ -92,6 +117,11 @@ const forgetsession = async (req, res, next) => {
 		data: {},
 	})
 }
+
+const forgetPassword = async (req, res, next) => {
+	
+}
+
 
 module.exports = {
 	session,

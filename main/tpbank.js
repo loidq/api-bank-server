@@ -33,10 +33,10 @@ function isObject(obj) {
 
 const getProxy = async () => {
 	let { host, port, auth } = await Proxy.findById('62d04051bdd86d759ccc4161')
+
 	let proxy = new HttpsProxyAgent({
 		host,
 		port,
-		auth,
 	})
 	return proxy
 }
@@ -69,8 +69,9 @@ const postAxios = async (url, data, headers, proxy = null, method = 'post') => {
 		},
 		httpsAgent: proxy,
 		validateStatus: () => true,
-		timeout: 4000,
+		timeout: 5000,
 	})
+
 	if (response.status == 407)
 		newError({
 			message: 'Server Proxy có vấn đề, vui lòng thử lại sau',
@@ -123,11 +124,12 @@ const Login = async (req, res, next) => {
 
 	let deviceId = uuidv4()
 	let { username, _id, imei } = req.bank
+
 	let { password } = req.value.body
 	let data = {
 		password: password,
 		deviceId: imei || deviceId,
-		step_2FA: 'VERIFY',
+
 		username: username,
 	}
 
@@ -158,6 +160,7 @@ const Login = async (req, res, next) => {
 const GET_BALANCE = async (req, res, next) => {
 	let proxy = await getProxy()
 	let { newLogin, _id } = req.bank
+
 	if (newLogin) await Login(req, res, next)
 
 	let { response } = await postAxios(
@@ -189,6 +192,7 @@ const GET_TRANSACTION = async (req, res, next) => {
 	let dayNow = new Date()
 	let toDate = dayjs(dayNow).format('YYYYMMDD')
 	let fromDate = dayjs(dayNow.setDate(dayNow.getDate() - 7)).format('YYYYMMDD')
+
 	let data = {
 		toDate,
 		fromDate,
